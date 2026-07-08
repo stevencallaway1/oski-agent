@@ -1,7 +1,7 @@
 {
   "name": "oski-agent",
   "version": "0.1.0",
-  "description": "Self-evolving Slack-native AI ops agent for small teams. Typed tools, durable instructions, draft-first execution, cost caps, and optional reviewed tool generation.",
+  "description": "Self-evolving AI operations runtime for small teams. Typed tools, durable instructions, draft-first execution, cost controls, and reviewed tool generation.",
   "license": "MIT",
   "repository": {
     "type": "git",
