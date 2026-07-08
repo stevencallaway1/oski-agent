@@ -1,8 +1,10 @@
 # Oski: The Self-Evolving AI Ops Agent
 
-Oski is an open-source AI operating system for internal team workflows.
+Oski is an open-source AI agent framework that learns, uses tools, and grows its capabilities over time.
 
-In plain English: Oski is an AI teammate you run inside your own workspace. You can ask it to summarize files, search code, draft updates, remember team instructions, track its own usage cost, and propose new tools when it cannot do something yet. It is designed to be useful without becoming a black box: actions start as drafts, file access is limited, tool use is logged, and new capabilities require human review before they are trusted.
+In plain English: Oski is a controlled AI teammate you can run inside your own business. It can summarize files, search code, draft updates, remember team instructions, track its own usage cost, and propose new tools when it cannot do something yet. The goal is to help teams become AI-native by giving the agent a safe way to work across the business, remember how the team operates, and get more useful over time.
+
+Oski is designed to feel less like a chatbot and more like an AI employee with guardrails. It can learn operating preferences, use approved tools, and expand its capabilities through reviewed tool generation. It does not grant itself trust. Actions start as drafts, file access is limited, tool use is logged, and new capabilities require human review before they are trusted.
 
 Slack is the command surface. The core product is the operating layer behind the agent: queue, runner, typed tools, instruction memory, cost controls, draft-first execution, audit logs, and reviewed capability expansion.
 
@@ -20,11 +22,11 @@ Oski is built as a reference architecture for teams that want internal AI agents
 
 ## Why this matters
 
-Small teams need more than chat over documents. They need agents that can work across context, use tools safely, learn operating preferences, and expand their capabilities without removing human control.
+Companies do not become AI-native by adding a chatbot to Slack. They become AI-native when AI can safely operate across real workflows, remember how the business works, and improve as the company changes.
 
 Most internal agent projects fail in one of two ways. They stay static, limited to a fixed integration list. Or they become too open-ended, giving the model broad code execution without enough review or auditability.
 
-Oski is built for the middle path: an agent that can grow, but only through files, logs, scopes, and human review.
+Oski is built for the middle path: an agent that can learn, use tools, and grow, but only through files, logs, scopes, and human review.
 
 ## The self-evolution loop
 
@@ -39,7 +41,7 @@ The agent can propose new capability. It cannot grant itself trust.
 
 ## What makes it different
 
-- **AI operating system, not a chatbot wrapper.** Tasks move through a queue, runner, typed tool registry, logs, and explicit policy controls.
+- **Agent framework, not a chatbot wrapper.** Tasks move through a queue, runner, typed tool registry, logs, and explicit policy controls.
 - **Durable behavioral memory.** `instructions.md` is a plain-text operating manual, versioned in git and loaded fresh every turn.
 - **Draft-first execution.** Outbound actions default to drafts. Going live is an explicit per-tool decision.
 - **Hard cost controls.** A daily USD cap halts the queue. Unknown models price at the most expensive tier by default.
@@ -124,7 +126,7 @@ More walkthroughs, including building a custom read-only tool, are in [docs/EXAM
 
 **It is:**
 
-- A reference architecture for a controllable internal AI operations agent.
+- A reference architecture for a controllable internal AI agent framework.
 - Able to answer questions about approved team files and notes.
 - Able to draft internal updates and replies for human review.
 - Able to learn behavioral rules from plain-English feedback.
