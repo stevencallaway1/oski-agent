@@ -1,12 +1,22 @@
 # Oski: The Self-Evolving AI Ops Agent
 
-Oski is a self-evolving AI operations runtime for small teams.
+Oski is an open-source AI operating system for internal team workflows.
 
-It turns team requests into controlled agent runs across Slack, CLI, scheduled jobs, local workspace context, and a typed tool registry. It can read approved files, search code, draft updates, track cost, learn team-specific instructions, and propose new tools when it hits a capability gap.
+In plain English: Oski is an AI teammate you run inside your own workspace. You can ask it to summarize files, search code, draft updates, remember team instructions, track its own usage cost, and propose new tools when it cannot do something yet. It is designed to be useful without becoming a black box: actions start as drafts, file access is limited, tool use is logged, and new capabilities require human review before they are trusted.
 
-Slack is the command surface. The core product is the operating layer: queue, runner, typed tools, instruction memory, cost controls, draft-first side effects, audit logs, and reviewed capability expansion.
+Slack is the command surface. The core product is the operating layer behind the agent: queue, runner, typed tools, instruction memory, cost controls, draft-first execution, audit logs, and reviewed capability expansion.
 
-Oski is built as a reference architecture for teams that want internal agents they can inspect, constrain, and extend.
+Oski is built as a reference architecture for teams that want internal AI agents they can inspect, constrain, and extend.
+
+## What it does
+
+- Takes requests from Slack, CLI, or scheduled jobs.
+- Uses approved tools to read files, search code, draft messages, and update instructions.
+- Keeps a plain-text team operating manual in `instructions.md`.
+- Tracks model usage and estimated cost.
+- Starts side-effectful actions as drafts by default.
+- Can scaffold new TypeScript tools when codegen is explicitly enabled.
+- Logs work so humans can audit what happened.
 
 ## Why this matters
 
@@ -29,7 +39,7 @@ The agent can propose new capability. It cannot grant itself trust.
 
 ## What makes it different
 
-- **Operations runtime, not a chatbot wrapper.** Tasks move through a queue, runner, typed tool registry, logs, and explicit policy controls.
+- **AI operating system, not a chatbot wrapper.** Tasks move through a queue, runner, typed tool registry, logs, and explicit policy controls.
 - **Durable behavioral memory.** `instructions.md` is a plain-text operating manual, versioned in git and loaded fresh every turn.
 - **Draft-first execution.** Outbound actions default to drafts. Going live is an explicit per-tool decision.
 - **Hard cost controls.** A daily USD cap halts the queue. Unknown models price at the most expensive tier by default.
