@@ -1,7 +1,7 @@
 {
   "name": "oski-agent",
   "version": "0.1.0",
-  "description": "Open-source AI operating system for internal team workflows. Typed tools, durable instructions, draft-first execution, cost controls, and reviewed tool generation.",
+  "description": "Open-source AI agent framework that learns, uses tools, and grows its capabilities over time. Built for AI-native internal team workflows.",
   "license": "MIT",
   "repository": {
     "type": "git",
