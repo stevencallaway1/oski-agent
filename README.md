@@ -1,20 +1,20 @@
 # Oski: The Self-Evolving AI Ops Agent
 
-Oski is a Slack-native AI ops agent for small teams.
+Oski is a self-evolving AI operations runtime for small teams.
 
-It turns Slack messages, cron jobs, and CLI tasks into tool-using agent runs. It reads approved context, searches code, drafts updates, tracks cost, learns team-specific rules, and can scaffold new tools when it hits a capability gap.
+It turns team requests into controlled agent runs across Slack, CLI, scheduled jobs, local workspace context, and a typed tool registry. It can read approved files, search code, draft updates, track cost, learn team-specific instructions, and propose new tools when it hits a capability gap.
 
-Most agent demos stop at function calling. Oski adds the operating layer: a queue, typed tools, durable instructions, cost caps, draft-first side effects, and a controlled path for the agent to grow its own tool surface.
+Slack is the command surface. The core product is the operating layer: queue, runner, typed tools, instruction memory, cost controls, draft-first side effects, audit logs, and reviewed capability expansion.
 
-Oski is not an autonomous employee. It is a reference architecture for internal agents that teams can inspect, constrain, and extend.
+Oski is built as a reference architecture for teams that want internal agents they can inspect, constrain, and extend.
 
 ## Why this matters
 
-Small teams do not need another chatbot.
+Small teams need more than chat over documents. They need agents that can work across context, use tools safely, learn operating preferences, and expand their capabilities without removing human control.
 
-They need internal agents that can operate across real context, learn from feedback, and grow their own tool surface, without giving up human control.
+Most internal agent projects fail in one of two ways. They stay static, limited to a fixed integration list. Or they become too open-ended, giving the model broad code execution without enough review or auditability.
 
-Most agent projects pick one of two extremes: a static integration list, or an unconstrained agent with a code execution tool. Oski is built for the middle: an agent that can genuinely grow, inside boundaries a small team can actually audit.
+Oski is built for the middle path: an agent that can grow, but only through files, logs, scopes, and human review.
 
 ## The self-evolution loop
 
@@ -29,12 +29,12 @@ The agent can propose new capability. It cannot grant itself trust.
 
 ## What makes it different
 
-- **Tool-using runtime, not a chatbot wrapper.** Every action goes through a typed tool registry, not a raw prompt.
-- **Durable behavioral memory, not a hidden prompt.** `instructions.md` is a plain-text file, versioned in git, editable by the team.
-- **Draft-first side effects, not blind automation.** Outbound actions default to a draft. Going live is an explicit per-tool decision.
-- **Hard cost ceiling, not open-ended API spend.** A daily USD cap halts the queue. Unknown models price at the most expensive tier by default.
-- **Self-evolving tool surface, not a static integration list.** New tools can be scaffolded, but they start untrusted.
-- **Honest safety boundaries, not autonomy theater.** Every claim in this repo maps to real, readable code. Nothing here runs unsupervised by default.
+- **Operations runtime, not a chatbot wrapper.** Tasks move through a queue, runner, typed tool registry, logs, and explicit policy controls.
+- **Durable behavioral memory.** `instructions.md` is a plain-text operating manual, versioned in git and loaded fresh every turn.
+- **Draft-first execution.** Outbound actions default to drafts. Going live is an explicit per-tool decision.
+- **Hard cost controls.** A daily USD cap halts the queue. Unknown models price at the most expensive tier by default.
+- **Reviewable capability growth.** New tools can be scaffolded, but they start untrusted and land as normal files.
+- **Readable safety model.** Every claim maps to code, docs, or configuration. Nothing runs unsupervised by default.
 
 ## Architecture
 
@@ -70,13 +70,13 @@ Full internals, including exactly where enforcement lives, are in [docs/ARCHITEC
 
 ## The three memory layers
 
-| Layer | What it is | How it's updated |
+| Layer | What it is | How it is updated |
 |---|---|---|
 | **Factual memory** | Approved workspace files, scoped to `OSKI_WORKSPACE_ROOTS` | Read live, per task. Never cached or embedded |
 | **Behavioral memory** | `instructions.md`, loaded fresh into the system prompt every turn | `oski learn:` through `update_instructions`, rate-capped, or edited directly in git |
 | **Procedural memory** | The typed tool registry: builtins, custom tools, and optional generated tools | Adding a builtin is a PR. Generated tools require `OSKI_ENABLE_CODEGEN=true` plus human review |
 
-None of these are vector stores or embeddings today. Factual memory is direct file reads. Behavioral memory is a plain-text file. Procedural memory is a directory of TypeScript files. That is a deliberate simplicity choice for a small-team-scale agent, not a placeholder for something more exotic.
+None of these are vector stores or embeddings today. Factual memory is direct file reads. Behavioral memory is a plain-text file. Procedural memory is a directory of TypeScript files. That is a deliberate simplicity choice for a small-team-scale agent.
 
 ## Safety model
 
@@ -113,18 +113,21 @@ More walkthroughs, including building a custom read-only tool, are in [docs/EXAM
 ## What this repo is and is not
 
 **It is:**
-- A reference architecture for a Slack-native internal ops agent runtime, built for founders, operators, and small teams who want an agent they can inspect and control.
-- Able to answer questions about a team's own files and notes without copy-pasting into a chat window.
+
+- A reference architecture for a controllable internal AI operations agent.
+- Able to answer questions about approved team files and notes.
 - Able to draft internal updates and replies for human review.
 - Able to learn behavioral rules from plain-English feedback.
+- Able to propose new tool files when codegen is explicitly enabled.
 - Bounded by a hard daily budget by construction.
 
 **It is not:**
+
 - Fully autonomous. Every side-effectful action starts as a draft and stays a draft until a human explicitly trusts the tool.
-- A production back office. There is no durable job queue, no horizontal scaling, no sandboxed code execution, and no test suite yet. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#what-a-production-deployment-would-need-next) for the honest gap list.
+- A production back office. There is no durable job queue, no horizontal scaling, no sandboxed code execution, and no test suite yet. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#what-a-production-deployment-would-need-next) for the gap list.
 - Connected to any CRM, billing system, or support desk by default. There is no Stripe, HubSpot, or Intercom integration in this repo.
 - Capable of sending email on its own. The one email example in `examples/plugins/` only creates Gmail drafts. Sending is always a manual step in Gmail.
-- Multi-tenant. One agent, one team, one channel. That is the point.
+- Multi-tenant. One agent, one team, one channel.
 
 ## Quickstart
 
@@ -223,7 +226,7 @@ Riskier integrations (email, databases) live in [examples/plugins/](examples/plu
 
 ## Roadmap
 
-Honest, not aspirational. These are gaps, not promises.
+Current gaps:
 
 - Durable, replayable task queue. Today the queue is in-memory. A crash mid-task loses the in-flight task, though the JSONL log survives.
 - A test suite and CI. `npm run build` passing is the current gate.
