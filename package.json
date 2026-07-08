@@ -1,7 +1,7 @@
 {
   "name": "oski-agent",
   "version": "0.1.0",
-  "description": "Self-evolving AI operations runtime for small teams. Typed tools, durable instructions, draft-first execution, cost controls, and reviewed tool generation.",
+  "description": "Open-source AI operating system for internal team workflows. Typed tools, durable instructions, draft-first execution, cost controls, and reviewed tool generation.",
   "license": "MIT",
   "repository": {
     "type": "git",
