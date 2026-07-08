@@ -6,7 +6,7 @@ Run this before every public release or any push to a public remote. All boxes m
 
 - [ ] No real secrets anywhere in the repo: `git grep -iE "xoxb-|xapp-|sk-ant|api[_-]?key\s*=\s*['\"][A-Za-z0-9]" -- ':!docs' ':!*.md'` returns nothing (token *prefixes* in docs as format examples are OK; real values are never OK)
 - [ ] `.env` is not tracked: `git ls-files | grep -x ".env"` returns nothing
-- [ ] `.env.example` contains placeholders only — every value is empty or an obvious dummy
+- [ ] `.env.example` contains placeholders only: every value is empty or an obvious dummy
 - [ ] No OAuth tokens, refresh tokens, connection strings, or service-role keys in code, comments, or logs
 - [ ] No hardcoded tokens in test fixtures or example files
 
@@ -22,7 +22,7 @@ Run this before every public release or any push to a public remote. All boxes m
 ## Sweep commands
 
 ```bash
-# From the repo root — should return nothing (adjust the list to your own private terms):
+# From the repo root, should return nothing (adjust the list to your own private terms):
 grep -rniE "your-company|your-name|internal-codename|staging\.|\.internal" \
   --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=data .
 
@@ -42,5 +42,5 @@ git ls-files | grep -E "\.env$|\.pem$|\.key$|credentials"
 
 ## Final
 
-- [ ] `git log` messages contain no private context (squash if needed — better yet, publish from a fresh history)
+- [ ] `git log` messages contain no private context (squash if needed, or better yet, publish from a fresh history)
 - [ ] Repo description and topics on GitHub contain no private context

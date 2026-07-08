@@ -1,24 +1,40 @@
-# Oski: a self-extending internal ops agent for small teams
+# Oski: The Self-Evolving AI Ops Agent
 
-Oski is an open-source TypeScript runtime for building Slack-native internal AI agents. It combines a lightweight task queue, Anthropic tool calling, a typed tool registry, durable behavioral instructions, cost controls, and a draft-first safety model.
+Oski is a Slack-native AI ops agent for small teams.
 
-**The key idea:** most AI assistants are stateless chat windows. Oski is closer to an internal operator — it lives in Slack, reads approved context, calls explicit tools, drafts actions for review, learns team-specific rules, and can optionally scaffold new tools when it hits a capability gap.
+It turns Slack messages, cron jobs, and CLI tasks into tool-using agent runs. It reads approved context, searches code, drafts updates, tracks cost, learns team-specific rules, and can scaffold new tools when it hits a capability gap.
 
-It is not a magic autonomous employee. It is a practical reference architecture for building internal agents with real operational constraints: explicit tool boundaries, draft-first execution, and a hard cost ceiling.
+Most agent demos stop at function calling. Oski adds the operating layer: a queue, typed tools, durable instructions, cost caps, draft-first side effects, and a controlled path for the agent to grow its own tool surface.
 
-## Why Oski exists
+Oski is not an autonomous employee. It is a reference architecture for internal agents that teams can inspect, constrain, and extend.
 
-Most "AI agent" demos are a chat window with a big system prompt. That's fine for a toy, but it breaks down the moment you want an agent embedded in how a team actually works — where every action needs an audit trail, every dollar spent needs a ceiling, and every side effect needs a human in the loop before it leaves the building.
+## Why this matters
 
-Oski starts from those constraints instead of bolting them on afterward. The queue, the tool registry, the cost log, and the draft-first default all exist because an internal agent that can read your files and post in your team's Slack needs boundaries that are enforced in code, not just described in a prompt.
+Small teams do not need another chatbot.
+
+They need internal agents that can operate across real context, learn from feedback, and grow their own tool surface, without giving up human control.
+
+Most agent projects pick one of two extremes: a static integration list, or an unconstrained agent with a code execution tool. Oski is built for the middle: an agent that can genuinely grow, inside boundaries a small team can actually audit.
+
+## The self-evolution loop
+
+1. A task arrives from Slack, CLI, or cron.
+2. Oski checks its typed tool registry.
+3. If a tool exists, it uses it.
+4. If no tool exists and codegen is enabled, Oski can scaffold a new TypeScript tool.
+5. The new tool lands as a real file in `src/tools/generated/`.
+6. It is logged, reviewable, and not trusted for live action until a human approves it.
+
+The agent can propose new capability. It cannot grant itself trust.
 
 ## What makes it different
 
-- **Explicit tool boundary.** The model can only do what's in the typed tool registry — no shell access, no arbitrary code execution from the main loop. Every tool is a single reviewable TypeScript file.
-- **Draft-first execution.** Side-effectful tools return draft text by default. Going live is a deliberate, per-tool opt-in (`OSKI_LIVE_TOOLS`), not the default state.
-- **Durable behavioral memory.** `instructions.md` is loaded fresh on every turn and can be extended in plain English (`oski learn: ...`) without a redeploy — the agent's behavior evolves as a readable, git-trackable file, not a black-box fine-tune.
-- **Hard cost ceiling.** A daily USD cap halts the task queue outright. Unknown models are priced at the most expensive known tier so the cap always errs toward pausing early.
-- **Self-extension, not self-modification.** When the agent hits a capability gap, it can (optionally) scaffold a new tool — but the generated file loads at read scope and requires human review before it is trusted with anything live. See [docs/SELF_EXTENSION.md](docs/SELF_EXTENSION.md).
+- **Tool-using runtime, not a chatbot wrapper.** Every action goes through a typed tool registry, not a raw prompt.
+- **Durable behavioral memory, not a hidden prompt.** `instructions.md` is a plain-text file, versioned in git, editable by the team.
+- **Draft-first side effects, not blind automation.** Outbound actions default to a draft. Going live is an explicit per-tool decision.
+- **Hard cost ceiling, not open-ended API spend.** A daily USD cap halts the queue. Unknown models price at the most expensive tier by default.
+- **Self-evolving tool surface, not a static integration list.** New tools can be scaffolded, but they start untrusted.
+- **Honest safety boundaries, not autonomy theater.** Every claim in this repo maps to real, readable code. Nothing here runs unsupervised by default.
 
 ## Architecture
 
@@ -44,46 +60,34 @@ flowchart LR
     R --> OUT[Reply: draft or live]
 ```
 
-- **Queue.** In-memory FIFO with an append-only JSONL mirror at `data/agent/queue.jsonl`. Concurrency is 1 — one task at a time keeps cost and behavior predictable.
-- **Runner.** Each task is an agentic loop: the model can call tools for up to 10 steps before producing a final reply. A cheap model (`claude-haiku-4-5` by default) handles routing; the runner automatically escalates to a stronger model (`claude-sonnet-4-5` by default) once a task proves to need multiple tool calls. Retries with backoff on rate limits, hard 120s timeout per task.
-- **Tools.** Every tool is a TypeScript file exporting a typed `ToolDefinition` with a `read` / `draft` / `live` scope. The registry discovers builtin tools at startup and hot-reloads `src/tools/generated/` via a filesystem watcher.
-- **Cost log.** Every turn writes model, tokens, and estimated USD to `data/agent/cost.jsonl`. The queue checks the daily cap before starting each task and pauses when it's hit.
-- **Instructions.** `instructions.md` is read fresh on every turn and folded into the system prompt. Anyone on the team can extend it via `oski learn:` in Slack. No redeploy required.
+- **Queue.** In-memory FIFO with an append-only JSONL mirror at `data/agent/queue.jsonl`. Concurrency is 1. One task at a time keeps cost and behavior predictable.
+- **Runner.** Each task is an agentic loop. The model can call tools for up to 10 steps before producing a final reply. A cheap model handles routing. The runner escalates to a stronger model once a task proves it needs multiple tool calls. Retries with backoff on rate limits. Hard 120s timeout per task.
+- **Tools.** Every tool is a TypeScript file exporting a typed `ToolDefinition` with a `read`, `draft`, or `live` scope. The registry discovers builtin tools at startup and hot-reloads `src/tools/generated/`.
+- **Cost log.** Every turn writes model, tokens, and estimated USD to `data/agent/cost.jsonl`. The queue checks the daily cap before starting each task.
+- **Instructions.** `instructions.md` loads fresh into the system prompt on every turn. The team extends it with `oski learn:` in Slack. No redeploy required.
 
-Full internals — including where enforcement actually lives, and what a production deployment would still need — are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Full internals, including exactly where enforcement lives, are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## The three memory layers
 
-Oski separates what the agent knows into three distinct layers, each with a different update mechanism and a different risk profile:
-
 | Layer | What it is | How it's updated |
 |---|---|---|
-| **Factual memory** | Approved workspace files and whatever the `read_file` / `search_code` tools can see, scoped to `OSKI_WORKSPACE_ROOTS` | Read live, per task — never cached or embedded |
-| **Behavioral memory** | `instructions.md`, loaded fresh into the system prompt every turn | Edited via `oski learn:` (through `update_instructions`, rate-capped) or directly in git |
-| **Procedural memory** | The typed tool registry: builtins, hand-written custom tools, and optional generated tools | Adding a builtin is a PR; generated tools require `OSKI_ENABLE_CODEGEN=true` plus human review |
+| **Factual memory** | Approved workspace files, scoped to `OSKI_WORKSPACE_ROOTS` | Read live, per task. Never cached or embedded |
+| **Behavioral memory** | `instructions.md`, loaded fresh into the system prompt every turn | `oski learn:` through `update_instructions`, rate-capped, or edited directly in git |
+| **Procedural memory** | The typed tool registry: builtins, custom tools, and optional generated tools | Adding a builtin is a PR. Generated tools require `OSKI_ENABLE_CODEGEN=true` plus human review |
 
-None of these are vector stores or embeddings today — factual memory is direct file reads, behavioral memory is a plain-text file, and procedural memory is a directory of TypeScript files. That's a deliberate simplicity choice for a small-team-scale agent, not a placeholder for something more exotic.
-
-## The self-extension loop
-
-1. A task arrives (Slack, CLI, or cron).
-2. The runner checks the tool registry for something that fits.
-3. If a tool exists, it's called directly — normal agentic tool use.
-4. If no tool fits and codegen is enabled (`OSKI_ENABLE_CODEGEN=true`, off by default), the agent can call `generate_tool` to scaffold a new one via the Claude Code CLI, capped at 3 generations/day.
-5. The new file lands in `src/tools/generated/` at `read` scope and is hot-reloaded — but it is **not** trusted for live or side-effectful action until a human reviews it and, if appropriate, promotes it into `src/tools/builtin/` or adds it to `OSKI_LIVE_TOOLS`.
-
-This is a capability-growth pattern, not autonomous self-modification: nothing generated code writes ever runs unreviewed in a live/side-effectful capacity. See [docs/SELF_EXTENSION.md](docs/SELF_EXTENSION.md) for the full reasoning, including how this differs from naive function calling.
+None of these are vector stores or embeddings today. Factual memory is direct file reads. Behavioral memory is a plain-text file. Procedural memory is a directory of TypeScript files. That is a deliberate simplicity choice for a small-team-scale agent, not a placeholder for something more exotic.
 
 ## Safety model
 
-1. **Draft-first.** Outbound actions return draft text for human review by default. Going live requires adding the tool name to `OSKI_LIVE_TOOLS` — a deliberate, per-tool decision.
+1. **Draft-first.** Outbound actions return draft text by default. Going live requires adding the tool name to `OSKI_LIVE_TOOLS`, a deliberate per-tool decision.
 2. **Deny-by-default file access.** `read_file` and `search_code` only touch directories in `OSKI_WORKSPACE_ROOTS`. No roots configured means no access. Symlinks are resolved and re-checked so they cannot escape the sandbox.
-3. **No shell interpolation.** `search_code` and `generate_tool` invoke external processes via `execFile` with argument arrays. Model-supplied input is never concatenated into a shell string.
-4. **Hard budget.** The queue checks the daily USD cap before starting each task and pauses once it's reached. Unknown models are priced at the most expensive tier so the cap errs toward pausing early.
-5. **Codegen is opt-in, experimental, and unsandboxed.** `generate_tool` refuses to run unless `OSKI_ENABLE_CODEGEN=true`. Generated tools load at `read` scope by convention, but they are real code executing directly on the host with full process permissions — there is no container or sandbox around this today. **Always read a generated tool before keeping it, and never add one to `OSKI_LIVE_TOOLS` without review.**
+3. **No shell interpolation.** `search_code` and `generate_tool` invoke external processes via `execFile` with argument arrays. Model-supplied input never touches a shell string.
+4. **Hard budget.** The queue checks the daily USD cap before starting each task. Unknown models price at the most expensive tier by default.
+5. **Codegen is opt-in, experimental, and unsandboxed.** `generate_tool` refuses to run unless `OSKI_ENABLE_CODEGEN=true`. Generated tools load at `read` scope by convention, but they run as real code with full process permissions. There is no container around this today. Read a generated tool before keeping it. Never add one to `OSKI_LIVE_TOOLS` without review.
 6. **Audit trails.** Task queue, cost, and instruction edits each get an append-only JSONL log under `data/agent/`.
 
-Threat model detail — including how each `live`-scoped tool enforces its own trust boundary — is in [SECURITY.md](SECURITY.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Threat model detail, including how each `live`-scoped tool enforces its own trust boundary, is in [SECURITY.md](SECURITY.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Example workflows
 
@@ -104,23 +108,23 @@ You:             oski cost
 Oski:            Today: $0.0312 / $2 cap. This week: $0.1877.
 ```
 
-More walkthroughs — including building a custom read-only tool — are in [docs/EXAMPLES.md](docs/EXAMPLES.md).
+More walkthroughs, including building a custom read-only tool, are in [docs/EXAMPLES.md](docs/EXAMPLES.md).
 
 ## What this repo is and is not
 
 **It is:**
 - A reference architecture for a Slack-native internal ops agent runtime, built for founders, operators, and small teams who want an agent they can inspect and control.
-- Answers questions about a team's own files and notes without copy-pasting into a chat window.
-- Drafts internal updates and replies for human review.
-- Learns behavioral rules from plain-English feedback.
-- Stays inside a hard daily budget by construction.
+- Able to answer questions about a team's own files and notes without copy-pasting into a chat window.
+- Able to draft internal updates and replies for human review.
+- Able to learn behavioral rules from plain-English feedback.
+- Bounded by a hard daily budget by construction.
 
 **It is not:**
 - Fully autonomous. Every side-effectful action starts as a draft and stays a draft until a human explicitly trusts the tool.
-- A production back office. There is no durable/replayable job queue, no horizontal scaling, no sandboxed code execution, and no test suite yet — see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#what-a-production-deployment-would-need-next) for the honest gap list.
-- Connected to any CRM, billing system, or support desk. There is no Stripe, HubSpot, or Intercom integration in this repo.
-- Capable of sending email autonomously. The one email example in `examples/plugins/` only creates Gmail drafts — sending is always a manual step in Gmail.
-- Multi-tenant. One agent, one team, one channel. That's the point.
+- A production back office. There is no durable job queue, no horizontal scaling, no sandboxed code execution, and no test suite yet. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#what-a-production-deployment-would-need-next) for the honest gap list.
+- Connected to any CRM, billing system, or support desk by default. There is no Stripe, HubSpot, or Intercom integration in this repo.
+- Capable of sending email on its own. The one email example in `examples/plugins/` only creates Gmail drafts. Sending is always a manual step in Gmail.
+- Multi-tenant. One agent, one team, one channel. That is the point.
 
 ## Quickstart
 
@@ -134,13 +138,13 @@ cp .env.example .env
 # edit .env: add ANTHROPIC_API_KEY, set OSKI_WORKSPACE_ROOTS
 ```
 
-Run a task from the CLI (no Slack needed):
+Run a task from the CLI, no Slack needed:
 
 ```bash
 npm run agent:task -- "list your loaded tools"
 ```
 
-Start the agent (Slack if configured, otherwise CLI-only mode):
+Start the agent, Slack if configured, otherwise CLI-only:
 
 ```bash
 npm run dev
@@ -164,9 +168,9 @@ Full walkthrough in [docs/SLACK_SETUP.md](docs/SLACK_SETUP.md). Short version: c
 | `ANTHROPIC_API_KEY` | yes | Anthropic API access |
 | `ANTHROPIC_MODEL_DEFAULT` | no | Cheap model for routing/triage (default `claude-haiku-4-5`) |
 | `ANTHROPIC_MODEL_REASONING` | no | Stronger model for multi-step tasks (default `claude-sonnet-4-5`) |
-| `OSKI_WORKSPACE_ROOTS` | for file tools | Comma-separated dirs the agent may read/search. **Empty = no access.** |
+| `OSKI_WORKSPACE_ROOTS` | for file tools | Comma-separated dirs the agent may read/search. Empty means no access. |
 | `OSKI_DAILY_USD_CAP` | no | Daily spend cap in USD (default `2`) |
-| `OSKI_LIVE_TOOLS` | no | Comma-separated tools allowed live writes. **Empty = all draft.** |
+| `OSKI_LIVE_TOOLS` | no | Comma-separated tools allowed live writes. Empty means all draft. |
 | `OSKI_SLACK_APP_TOKEN` | for Slack | App-level token for Socket Mode |
 | `OSKI_SLACK_BOT_TOKEN` | for Slack | Bot user OAuth token |
 | `OSKI_SLACK_CHANNEL_ID` | for Slack | Channel where Oski listens |
@@ -204,33 +208,29 @@ const tool: ToolDefinition = {
 export default tool;
 ```
 
-Drop it in `src/tools/builtin/`, restart, done. Scope is a declared convention — enforcement happens inside each tool's own `run()`:
+Drop it in `src/tools/builtin/`, restart, done. Scope is a declared convention. Enforcement happens inside each tool's own `run()`:
 
-- `read` — no side effects, always runs.
-- `draft` — produces the artifact (message text, email body) but does not send unless the tool checks `OSKI_LIVE_TOOLS` and finds itself listed.
-- `live` — side-effectful, or capable of modifying agent state. Each `live` tool implements its own gate: `slack_post_draft` and `generate_tool` check an allowlist/flag before doing anything real; `update_instructions` uses a daily edit cap instead, since editing local instructions carries less risk than an external send or arbitrary codegen.
+- `read`: no side effects, always runs.
+- `draft`: produces the artifact (message text, email body) but does not send unless the tool checks `OSKI_LIVE_TOOLS` and finds itself listed.
+- `live`: side-effectful, or capable of modifying agent state. Each `live` tool implements its own gate. `slack_post_draft` and `generate_tool` check an allowlist or flag before doing anything real. `update_instructions` uses a daily edit cap instead, since editing local instructions carries less risk than an external send or arbitrary codegen.
 
 1. Copy an existing file in `src/tools/builtin/` as a template.
 2. Keep the scope at `read` unless it genuinely needs to write.
-3. Catch every error and return `{ error: string }` — never throw.
+3. Catch every error and return `{ error: string }`. Never throw.
 4. Restart the agent and run `oski tools` (Slack) or `npm run agent:task -- "list your loaded tools"` to confirm it loaded.
 
 Riskier integrations (email, databases) live in [examples/plugins/](examples/plugins/) with placeholder-only setup instructions. They are not loaded by default.
 
 ## Roadmap
 
-Honest, not aspirational — these are gaps, not promises:
+Honest, not aspirational. These are gaps, not promises.
 
-- Durable, replayable task queue (currently in-memory; a crash mid-task loses the in-flight task, though the JSONL log survives).
-- A test suite and CI (`npm run build` passing is the only current gate).
-- Sandboxed execution for generated tools (today `generate_tool` runs the Claude Code CLI directly on the host process).
-- Structured metrics/alerting beyond console logs and JSONL files.
+- Durable, replayable task queue. Today the queue is in-memory. A crash mid-task loses the in-flight task, though the JSONL log survives.
+- A test suite and CI. `npm run build` passing is the current gate.
+- Sandboxed execution for generated tools. Today `generate_tool` runs the Claude Code CLI directly on the host process.
+- Structured metrics and alerting beyond console logs and JSONL files.
 - Secrets manager support as an alternative to plain `.env` files.
-
-## Why this matters for small teams
-
-Small teams can't afford an agent they have to take on faith. They need one they can read end to end in an afternoon, run on their own infrastructure, and extend without waiting on a vendor roadmap. Oski is built for that: every tool is a file you can open, every action defaults to a draft you can veto, and every dollar spent is capped and logged. That's a smaller promise than "autonomous AI employee" — and it's one this repo actually keeps.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

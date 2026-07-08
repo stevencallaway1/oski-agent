@@ -1,8 +1,16 @@
 {
   "name": "oski-agent",
   "version": "0.1.0",
-  "description": "Slack-native internal ops agent for small teams. Reads approved context, uses a typed tool registry, drafts replies and actions, tracks cost, and can be extended with custom tools.",
+  "description": "Self-evolving Slack-native AI ops agent for small teams. Typed tools, durable instructions, draft-first execution, cost caps, and optional reviewed tool generation.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stevencallaway1/oski-agent.git"
+  },
+  "homepage": "https://github.com/stevencallaway1/oski-agent#readme",
+  "bugs": {
+    "url": "https://github.com/stevencallaway1/oski-agent/issues"
+  },
   "engines": {
     "node": ">=20"
   },

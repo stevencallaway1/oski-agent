@@ -1,6 +1,6 @@
 # Examples
 
-Realistic walkthroughs of what Oski actually does, using the tools and commands that ship in this repo. Every example below maps to real code — no hypothetical tools.
+Realistic walkthroughs of what Oski actually does, using the tools and commands that ship in this repo. Every example below maps to real code. No hypothetical tools.
 
 ## Summarize a repo
 
@@ -21,7 +21,7 @@ Oski: DRAFT (not posted): "This week: billing fix shipped, onboarding doc
       in review, retro scheduled Fri. No blockers." Reply 'send it' to post live.
 ```
 
-Under the hood: the model calls `slack_post_draft`. Unless `slack_post_draft` is in `OSKI_LIVE_TOOLS`, the tool returns `{ mode: 'draft', ... }` and the system prompt requires the agent to paste the full draft text into its reply — the draft was never posted anywhere, so this is the only way you see it.
+Under the hood: the model calls `slack_post_draft`. Unless `slack_post_draft` is in `OSKI_LIVE_TOOLS`, the tool returns `{ mode: 'draft', ... }` and the system prompt requires the agent to paste the full draft text into its reply. The draft was never posted anywhere, so this is the only way you see it.
 
 ## Search docs for a decision
 
@@ -47,7 +47,7 @@ Oski: *Oski Status*
       Last task: "check team status" (2m ago, success)
 ```
 
-`oski status` is one of the immediate commands (`status`, `help`, `tools`, `cost`) that bypass the queue entirely and reply synchronously — see `handleStatusCommand` in `src/channels/socket-mode.ts`.
+`oski status` is one of the immediate commands (`status`, `help`, `tools`, `cost`) that bypass the queue entirely and reply synchronously. See `handleStatusCommand` in `src/channels/socket-mode.ts`.
 
 ## Add a behavioral rule
 
@@ -80,7 +80,7 @@ const tool: ToolDefinition = {
   async run({ repo_path }) {
     // Real implementation would shell out via execFile (never a shell string)
     // and stay inside OSKI_WORKSPACE_ROOTS, same as read_file/search_code.
-    return { error: 'not implemented — this is a template' };
+    return { error: 'not implemented, this is a template' };
   },
 };
 
@@ -96,4 +96,4 @@ Drop it in `src/tools/builtin/`, restart, and confirm it loaded with `npm run ag
 OSKI_CRON_ENABLED=true
 ```
 
-With cron enabled, two example jobs in `src/channels/cron.ts` fire on weekdays (15:30 and 18:00 UTC): one summarizes anything updated in the workspace in the last 24 hours, the other flags anything that looks blocked or overdue. Both are enqueued exactly like a Slack-triggered task — same runner, same cost log, same draft-first defaults for anything that would otherwise post live. Edit the cron expressions and task text in that file to match your team's schedule.
+With cron enabled, two example jobs in `src/channels/cron.ts` fire on weekdays (15:30 and 18:00 UTC): one summarizes anything updated in the workspace in the last 24 hours, the other flags anything that looks blocked or overdue. Both are enqueued exactly like a Slack-triggered task: same runner, same cost log, same draft-first defaults for anything that would otherwise post live. Edit the cron expressions and task text in that file to match your team's schedule.

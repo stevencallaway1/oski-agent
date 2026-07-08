@@ -8,7 +8,7 @@
 
 Oski uses Socket Mode instead of the HTTP Events API. This means:
 
-- No public URL required — works locally without ngrok.
+- No public URL required. Works locally without ngrok.
 - No signature verification complexity.
 - Works on any host with outbound internet, no inbound webhook configuration.
 - Slack maintains a persistent WebSocket to your server and reconnects automatically.
@@ -32,7 +32,7 @@ The only tradeoff: Socket Mode requires a long-running process with an active co
 2. Toggle **Enable Socket Mode** to ON.
 3. You will be prompted to create an **App-Level Token**.
 4. Name it `oski-socket-token` and add the scope `connections:write`.
-5. Click **Generate** and copy the token — it starts with `xapp-`.
+5. Click **Generate** and copy the token. It starts with `xapp-`.
 6. Add it to your `.env` as `OSKI_SLACK_APP_TOKEN=xapp-...`.
 
 ---
@@ -58,19 +58,19 @@ The only tradeoff: Socket Mode requires a long-running process with an active co
 
 1. In the left sidebar, click **Event Subscriptions** and toggle **Enable Events** to ON.
 2. Under **Subscribe to bot events**, add:
-   - `message.channels` — messages in public channels
-   - `message.groups` — messages in private channels
-   - `app_mention` — @Oski mentions in any channel
+   - `message.channels`: messages in public channels
+   - `message.groups`: messages in private channels
+   - `app_mention`: @Oski mentions in any channel
 3. Click **Save Changes**.
 
-With Socket Mode enabled you do NOT need a Request URL — events arrive over the WebSocket.
+With Socket Mode enabled you do NOT need a Request URL. Events arrive over the WebSocket.
 
 ---
 
 ## Step 5: Install the App to Your Workspace
 
 1. Under **OAuth & Permissions**, click **Install to Workspace** and approve.
-2. Copy the **Bot User OAuth Token** — it starts with `xoxb-`.
+2. Copy the **Bot User OAuth Token**. It starts with `xoxb-`.
 3. Add it to your `.env` as `OSKI_SLACK_BOT_TOKEN=xoxb-...`.
 
 ---
@@ -112,7 +112,7 @@ You should see:
 
 ```
 [oski:slack] Socket Mode connected to Slack
-[oski] online — 5 tools loaded. All actions are draft-only.
+[oski] online: 5 tools loaded. All actions are draft-only.
 ```
 
 In the agent channel, type:
@@ -127,7 +127,7 @@ If Oski replies with its command list, you're done.
 
 ## Troubleshooting
 
-- **No reply at all** — check the bot is actually a member of the channel (`/invite @Oski`), and that `message.channels` / `message.groups` events are subscribed.
-- **"scope or channel check failed" in logs** — add `channels:history` (public) or `groups:history` (private) and reinstall the app.
-- **Replies but no thread memory** — same as above; thread history needs the history scopes.
-- **`invalid_auth`** — the bot token was regenerated in Slack; copy the new `xoxb-` value into `.env` and restart.
+- **No reply at all**: check the bot is actually a member of the channel (`/invite @Oski`), and that `message.channels` / `message.groups` events are subscribed.
+- **"scope or channel check failed" in logs**: add `channels:history` (public) or `groups:history` (private) and reinstall the app.
+- **Replies but no thread memory**: same as above; thread history needs the history scopes.
+- **`invalid_auth`**: the bot token was regenerated in Slack; copy the new `xoxb-` value into `.env` and restart.

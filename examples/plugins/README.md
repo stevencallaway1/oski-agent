@@ -21,6 +21,6 @@ reference implementations with placeholder-only configuration.
 
 ## Safety notes
 
-- `email_draft.ts` only creates drafts. Sending always requires manual action in Gmail. Still, an OAuth token with Gmail scope is sensitive — store it in `.env` only, never commit it.
+- `email_draft.ts` only creates drafts. Sending always requires manual action in Gmail. Still, an OAuth token with Gmail scope is sensitive. Store it in `.env` only, never commit it.
 - `query_postgres_ro.ts` expects a **dedicated read-only database role**. Do not point it at a connection string with write privileges; the regex guard inside the tool is defense-in-depth, not the primary control. Create a role with `GRANT SELECT` only.
 - Anything the model can read can end up in a reply. Do not connect these tools to data sources containing customer PII unless every person reading the Slack channel is cleared to see that data.
