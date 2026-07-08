@@ -10,6 +10,16 @@ Slack is the command surface. The core product is the operating layer behind the
 
 Oski is built as a reference architecture for teams that want internal AI agents they can inspect, constrain, and extend.
 
+## Why I built this
+
+I'm the founder of [ChiefOS](https://getchiefos.com), the AI operating layer for founders and executive teams.
+
+Oski is the open-source reference framework behind the agent execution patterns I believe every AI-native business will need: typed tools, draft-first actions, scoped file access, durable instructions, cost controls, audit logs, and reviewed capability growth.
+
+ChiefOS applies these principles to founder-specific workflows, company context, executive follow-through, and the private integrations that make an operating layer useful inside a real business. Oski is the public framework. ChiefOS is the product layer.
+
+I open-sourced Oski so other builders do not have to solve the agent safety and execution layer from scratch, and so there is a clear public reference for how I think internal AI agents should be built.
+
 ## What it does
 
 - Takes requests from Slack, CLI, or scheduled jobs.
@@ -249,3 +259,7 @@ Current gaps:
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+## About
+
+Built by [Steven Callaway](https://www.linkedin.com/in/steven-callaway-b9267330), founder of [ChiefOS](https://getchiefos.com), the AI operating layer for founders and executive teams.
