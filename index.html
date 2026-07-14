@@ -714,17 +714,19 @@
     const liveMessage = document.getElementById('live-message');
     const resetBtn = document.getElementById('reset-demo');
 
-    approveBtn.addEventListener('click', () => {
+    function approve() {
       draftActions.innerHTML = '<span class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>Approved by you</span>';
       postedMessage.classList.remove('hidden');
       liveMessage.classList.remove('hidden');
       resetBtn.classList.remove('hidden');
       liveMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    });
+    }
+
+    approveBtn.addEventListener('click', approve);
 
     resetBtn.addEventListener('click', () => {
       draftActions.innerHTML = '<button id="approve-btn" class="inline-flex items-center gap-1.5 text-xs font-medium bg-bear-400 hover:bg-bear-500 text-black rounded-md px-3 py-1.5 transition-colors"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>Approve and send</button><span class="text-xs text-neutral-500 font-mono">reply "send it" to post live</span>';
-      document.getElementById('approve-btn').addEventListener('click', () => approveBtn.click());
+      document.getElementById('approve-btn').addEventListener('click', approve);
       postedMessage.classList.add('hidden');
       liveMessage.classList.add('hidden');
       resetBtn.classList.add('hidden');

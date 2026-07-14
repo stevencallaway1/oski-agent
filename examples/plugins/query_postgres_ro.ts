@@ -1,4 +1,4 @@
-import type { ToolDefinition } from '../../src/tool-registry';
+import type { ToolDefinition } from '../../tool-registry';
 
 // EXAMPLE PLUGIN — not loaded by default. See examples/plugins/README.md.
 //

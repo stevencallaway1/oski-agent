@@ -156,7 +156,7 @@ More walkthroughs, including building a custom read-only tool, are in [docs/EXAM
 Requirements: Node 20+, an Anthropic API key, and [ripgrep](https://github.com/BurntSushi/ripgrep#installation) (`rg`) for the `search_code` tool.
 
 ```bash
-git clone <your-fork-url> oski-agent
+git clone git@github.com:stevencallaway1/oski-agent.git
 cd oski-agent
 npm install
 cp .env.example .env
