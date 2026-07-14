@@ -28,7 +28,7 @@ When `OSKI_ENABLE_CODEGEN=true` and the agent calls `generate_tool` with a name 
 
 ## Why generated tools are off by default
 
-`OSKI_ENABLE_CODEGEN` defaults to `false`. Turning it on means the agent can write and load real TypeScript that runs with the same process permissions as the rest of Oski. There is no container or sandbox around this generation step today. See [ARCHITECTURE.md](ARCHITECTURE.md#optional-codegen-self-extension). That is a meaningfully different risk profile from every other tool in this repo, which is why it needs an explicit, separate opt-in rather than being bundled with normal tool use.
+`OSKI_ENABLE_CODEGEN` defaults to `false`. Turning it on means the agent can write and load real TypeScript that runs with the same process permissions as the rest of Oski. There is no container or sandbox around this generation step today. See [ARCHITECTURE.md](ARCHITECTURE.md#optional-codegen-self-evolution). That is a meaningfully different risk profile from every other tool in this repo, which is why it needs an explicit, separate opt-in rather than being bundled with normal tool use.
 
 ## Why human review matters
 
