@@ -17,6 +17,10 @@ Oski executes model-chosen tool calls against your local machine and your Slack 
 | Self-authored code doing something malicious or broken | Codegen off by default (`OSKI_ENABLE_CODEGEN`); generated tools load at `read` scope and require human review |
 | Forged Slack webhooks (HTTP fallback mode) | HMAC signature verification with timestamp replay window |
 
+### Human approval boundary
+
+Socket Mode stores each Slack draft under the channel and thread where it was created. Only an exact `approve` or `send it` reply from a human in that same thread can post the saved text. Bot-authored events are ignored before approval handling. Oski posts the draft before appending the approval record to `data/agent/approvals.jsonl`, so a failed post is never recorded as approved.
+
 ## Operator responsibilities
 
 Controls in the repo only work if the deployment is sane:
@@ -24,6 +28,7 @@ Controls in the repo only work if the deployment is sane:
 - Never commit `.env`. The `.gitignore` covers it; keep it that way.
 - Point `OSKI_WORKSPACE_ROOTS` only at directories you would paste into a chat with your whole team. Everything readable can end up in a Slack reply.
 - Keep `OSKI_LIVE_TOOLS` empty until you have watched the agent's drafts for a while.
+- Limit the bot to the intended Slack channel. The Socket Mode handler enforces `OSKI_SLACK_CHANNEL_ID`, and approved drafts can target any channel the bot is allowed to post in.
 - If you enable an example plugin, follow its README: read-only database roles, draft-only email scopes.
 - Review everything in `src/tools/generated/` before keeping it. Treat generated code like a pull request from a stranger.
 

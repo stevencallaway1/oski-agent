@@ -14,6 +14,7 @@ try {
 export const QUEUE_LOG = path.join(DATA_DIR, 'queue.jsonl');
 export const COST_LOG = path.join(DATA_DIR, 'cost.jsonl');
 export const EDIT_LOG = path.join(DATA_DIR, 'instruction-edits.jsonl');
+export const APPROVAL_LOG = path.join(DATA_DIR, 'approvals.jsonl');
 
 // Behavioral instructions live at the project root so they are easy to find and edit.
 export const INSTRUCTIONS_PATH = path.join(process.cwd(), 'instructions.md');

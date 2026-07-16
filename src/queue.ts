@@ -24,7 +24,7 @@ function appendLog(entry: Record<string, unknown>): void {
   try {
     fs.appendFileSync(QUEUE_LOG, JSON.stringify(entry) + '\n', 'utf8');
   } catch {
-    // non-fatal — in-memory queue is authoritative
+    // non-fatal - in-memory queue is authoritative
   }
 }
 

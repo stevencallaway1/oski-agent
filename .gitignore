@@ -9,7 +9,7 @@ dist/
 .env.local
 .env.*.local
 
-# Runtime data (task queue, cost logs, instruction edit audit log)
+# Runtime data (task queue, cost, instruction edit, and approval audit logs)
 data/
 
 # Logs

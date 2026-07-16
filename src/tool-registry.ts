@@ -34,6 +34,11 @@ function loadFile(fullPath: string): void {
   }
 }
 
+/** Register a tool directly. Useful for embedders and tests that provide a tool module. */
+export function registerTool(tool: ToolDefinition): void {
+  if (tool?.name && typeof tool.run === 'function') registry.set(tool.name, tool);
+}
+
 function loadDir(dir: string): void {
   if (!fs.existsSync(dir)) return;
   const exts = ['.ts', '.js'];
@@ -51,7 +56,7 @@ export function initRegistry(): void {
   if (fs.existsSync(GENERATED_DIR)) {
     fs.watch(GENERATED_DIR, { persistent: false }, (_event, filename) => {
       if (filename && (filename.endsWith('.ts') || filename.endsWith('.js'))) {
-        console.log(`[oski:tools] ${filename} changed — reloading generated tools...`);
+        console.log(`[oski:tools] ${filename} changed - reloading generated tools...`);
         loadDir(GENERATED_DIR);
       }
     });

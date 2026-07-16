@@ -5,6 +5,8 @@ import { startRunner } from './runner';
 import { startAgentCronJobs } from './channels/cron';
 import { createSlackEventsRouter } from './channels/slack-events';
 import { startSocketMode } from './channels/socket-mode';
+import { WebClient } from '@slack/web-api';
+import { registerSlackPoster } from './runner';
 
 async function main(): Promise<void> {
   console.log('[oski] initializing...');
@@ -27,6 +29,19 @@ async function main(): Promise<void> {
     await startSocketMode();
     console.log('[oski] Slack connected via Socket Mode.');
   } else if (signingSecret) {
+    const botToken = process.env.OSKI_SLACK_BOT_TOKEN;
+    if (botToken) {
+      const webClient = new WebClient(botToken);
+      registerSlackPoster(async (channel, text, threadTs) => {
+        await webClient.chat.postMessage({
+          channel,
+          text,
+          ...(threadTs ? { thread_ts: threadTs } : {}),
+        });
+      });
+    } else {
+      console.warn('[oski] OSKI_SLACK_BOT_TOKEN is not set, so HTTP and scheduled task results cannot be delivered.');
+    }
     const app = express();
     app.use('/slack/events', createSlackEventsRouter());
     const port = parseInt(process.env.PORT ?? '3001', 10);
@@ -34,7 +49,7 @@ async function main(): Promise<void> {
       console.log(`[oski] Slack connected via HTTP Events API (POST http://localhost:${port}/slack/events).`);
     });
   } else {
-    console.log('[oski] No Slack credentials found — running in CLI-only mode.');
+    console.log('[oski] No Slack credentials found - running in CLI-only mode.');
     console.log('[oski] Enqueue tasks with: npm run agent:task -- "your task here"');
   }
 

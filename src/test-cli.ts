@@ -63,7 +63,7 @@ void (async () => {
       }
       const today = todaySpendUsd();
       const week = weekSpendUsd();
-      console.log(`\n[test] Spend — today: $${today.toFixed(4)}, week: $${week.toFixed(4)}`);
+      console.log(`\n[test] Spend - today: $${today.toFixed(4)}, week: $${week.toFixed(4)}`);
       break;
     }
 

@@ -7,7 +7,7 @@
     "type": "git",
     "url": "git+https://github.com/stevencallaway1/oski-agent.git"
   },
-  "homepage": "https://github.com/stevencallaway1/oski-agent#readme",
+  "homepage": "https://stevencallaway1.github.io/oski-agent/",
   "bugs": {
     "url": "https://github.com/stevencallaway1/oski-agent/issues"
   },
@@ -17,8 +17,11 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
+    "test": "vitest run",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
+    "demo": "tsx src/demo.ts",
+    "site:css": "npx --yes tailwindcss@3.4.17 -c tailwind.site.config.cjs -i assets/tailwind-input.css -o assets/site.css --minify",
     "agent:task": "tsx src/cli.ts",
     "agent:mock": "tsx src/test-cli.ts mock",
     "agent:queue": "tsx src/test-cli.ts queue",
@@ -36,6 +39,7 @@
     "@types/express": "^4.17.21",
     "@types/node": "^20.0.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "vitest": "^3.2.7"
   }
 }

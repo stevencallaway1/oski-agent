@@ -1,12 +1,12 @@
 import type { ToolDefinition } from '../../tool-registry';
 
-// EXAMPLE PLUGIN — not loaded by default. See examples/plugins/README.md.
+// EXAMPLE PLUGIN - not loaded by default. See examples/plugins/README.md.
 //
 // Creates a Gmail draft via the Google API using an OAuth token you provide.
-// Never sends — only drafts. Sending requires manual action in Gmail.
+// Never sends - only drafts. Sending requires manual action in Gmail.
 //
 // Requires: npm install googleapis
-// Env vars (placeholders only — get real values from Google Cloud Console):
+// Env vars (placeholders only - get real values from Google Cloud Console):
 //   GOOGLE_CLIENT_ID=your_client_id_here
 //   GOOGLE_CLIENT_SECRET=your_client_secret_here
 //   GOOGLE_ACCESS_TOKEN=

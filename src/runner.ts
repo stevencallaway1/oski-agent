@@ -6,10 +6,34 @@ import { toAnthropicTools, getTool } from './tool-registry';
 import { logCost, estimateUsd, todaySpendUsd } from './cost-log';
 import { POLICY } from './policy';
 import { log } from './logger';
-import { setLastTask, setProcessing, incrementPolicyViolations } from './state';
+import { getProcessing, setLastTask, setProcessing, incrementPolicyViolations } from './state';
+import { savePendingDraft } from './approvals';
 
 const TASK_TIMEOUT_MS = 120_000;
 const MAX_RETRIES = 3;
+
+export interface ModelResponse {
+  stop_reason: string | null;
+  content: Array<{
+    type: string;
+    text?: string;
+    id?: string;
+    name?: string;
+    input?: unknown;
+  }>;
+  usage: { input_tokens: number; output_tokens: number };
+}
+
+export interface ModelClient {
+  messages: {
+    create: (input: unknown, options?: { signal?: AbortSignal }) => Promise<ModelResponse>;
+  };
+}
+
+export interface ProcessTaskOptions {
+  modelClient?: ModelClient;
+  timeoutMs?: number;
+}
 
 let running = false;
 let intervalHandle: ReturnType<typeof setInterval> | null = null;
@@ -22,17 +46,25 @@ function getApiKey(): string {
   return key;
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener('abort', () => {
+      clearTimeout(timer);
+      reject(new Error('Task aborted.'));
+    }, { once: true });
+  });
 }
 
 async function withRetry<T>(
   fn: () => Promise<T>,
   taskId: string,
-  maxRetries = MAX_RETRIES
+  maxRetries = MAX_RETRIES,
+  signal?: AbortSignal
 ): Promise<T> {
   let lastErr: unknown;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    if (signal?.aborted) throw new Error('Task aborted.');
     try {
       return await fn();
     } catch (err) {
@@ -44,22 +76,25 @@ async function withRetry<T>(
       if (!isRetryable || attempt === maxRetries) break;
       const delay = isRateLimit ? 30_000 : Math.pow(2, attempt) * 1_000;
       log.retry(taskId, attempt, msg.slice(0, 80));
-      await sleep(delay);
+      await sleep(delay, signal);
     }
   }
   throw lastErr;
 }
 
-function withTimeout<T>(fn: () => Promise<T>, ms: number, taskId: string): Promise<T> {
+function withTimeout<T>(fn: (signal: AbortSignal) => Promise<T>, ms: number, taskId: string): Promise<T> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout>;
   return Promise.race([
-    fn(),
-    new Promise<never>((_, reject) =>
-      setTimeout(() => {
+    fn(controller.signal),
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
         log.timeout(taskId, ms);
+        controller.abort();
         reject(new Error(`Task timed out after ${ms}ms`));
-      }, ms)
-    ),
-  ]);
+      }, ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
 }
 
 async function fetchThreadHistory(channel: string, messageTs: string): Promise<string> {
@@ -83,7 +118,7 @@ async function fetchThreadHistory(channel: string, messageTs: string): Promise<s
   if (!threadTs || threadTs === messageTs) return '';
 
   const result = await client.conversations.replies({ channel, ts: threadTs, limit: 20 });
-  // Slice off the last message — that's the one we're currently responding to.
+  // Slice off the last message - that's the one we're currently responding to.
   const msgs = (result.messages ?? []).slice(0, -1);
   if (msgs.length === 0) return '';
 
@@ -94,7 +129,34 @@ async function fetchThreadHistory(channel: string, messageTs: string): Promise<s
   return `[Thread history - earlier messages in this conversation]\n${lines.join('\n')}\n[End of thread history]\n\n`;
 }
 
-async function runAgenticLoop(task: AgentTask): Promise<string> {
+async function createModelClient(): Promise<ModelClient> {
+  if (process.env.OSKI_MOCK === 'true') {
+    const { MockModelClient } = await import('./mock-model');
+    return new MockModelClient();
+  }
+  return new Anthropic({ apiKey: getApiKey() }) as unknown as ModelClient;
+}
+
+function capturePendingDraft(task: AgentTask, toolName: string, result: unknown): void {
+  if (toolName !== 'slack_post_draft' || task.source !== 'slack') return;
+  if (!result || typeof result !== 'object') return;
+  const draft = result as Record<string, unknown>;
+  if (draft.mode !== 'draft' || typeof draft.text !== 'string') return;
+  const originChannel = task.payload.channel;
+  const originThreadTs = task.payload.threadTs ?? task.payload.slackTs;
+  if (!originChannel || !originThreadTs) return;
+
+  savePendingDraft({
+    taskId: task.id,
+    originChannel,
+    originThreadTs,
+    targetChannel: typeof draft.channel === 'string' ? draft.channel : originChannel,
+    targetThreadTs: typeof draft.thread_ts === 'string' ? draft.thread_ts : undefined,
+    text: draft.text,
+  });
+}
+
+async function runAgenticLoop(task: AgentTask, client: ModelClient, signal: AbortSignal): Promise<string> {
   const dailySpend = todaySpendUsd();
   if (dailySpend >= POLICY.dailyCapUsd) {
     const msg = `Daily spend cap ($${POLICY.dailyCapUsd}) reached ($${dailySpend.toFixed(4)} spent today). Queue paused until midnight UTC.`;
@@ -116,7 +178,6 @@ async function runAgenticLoop(task: AgentTask): Promise<string> {
     }
   }
 
-  const client = new Anthropic({ apiKey: getApiKey() });
   const messages: MessageParam[] = [{ role: 'user', content: historyPrefix + buildUserMessage(task) }];
   const tools = toAnthropicTools();
   const toolCallNames: string[] = [];
@@ -128,6 +189,7 @@ async function runAgenticLoop(task: AgentTask): Promise<string> {
   const startMs = Date.now();
 
   for (let step = 0; step < 10; step++) {
+    if (signal.aborted) throw new Error('Task aborted.');
     const response = await withRetry(
       () => client.messages.create({
         model,
@@ -135,8 +197,10 @@ async function runAgenticLoop(task: AgentTask): Promise<string> {
         system: buildSystemPrompt(),
         tools: tools.length > 0 ? tools : undefined,
         messages,
-      }),
-      task.id
+      }, { signal }),
+      task.id,
+      MAX_RETRIES,
+      signal
     );
 
     totalInput += response.usage.input_tokens;
@@ -151,12 +215,12 @@ async function runAgenticLoop(task: AgentTask): Promise<string> {
     }
 
     if (response.stop_reason === 'tool_use') {
-      messages.push({ role: 'assistant', content: response.content });
+      messages.push({ role: 'assistant', content: response.content as MessageParam['content'] });
 
       const toolResults: MessageParam['content'] = [];
       for (const block of response.content) {
         if (block.type !== 'tool_use') continue;
-        const tb = block as ToolUseBlock;
+        const tb = block as unknown as ToolUseBlock;
         toolCallNames.push(tb.name);
 
         const tool = getTool(tb.name);
@@ -172,6 +236,7 @@ async function runAgenticLoop(task: AgentTask): Promise<string> {
         }
 
         log.toolCall(task.id, tb.name, JSON.stringify(result));
+        capturePendingDraft(task, tb.name, result);
         toolResults.push({
           type: 'tool_result',
           tool_use_id: tb.id,
@@ -218,7 +283,8 @@ export function registerSlackPoster(fn: (channel: string, text: string, threadTs
   _postToSlack = fn;
 }
 
-export async function processNextTask(): Promise<void> {
+export async function processNextTask(options: ProcessTaskOptions = {}): Promise<void> {
+  if (getProcessing()) return;
   const task = dequeue();
   if (!task) return;
 
@@ -227,9 +293,10 @@ export async function processNextTask(): Promise<void> {
   log.taskStart(task.id, task.payload.text);
 
   try {
+    const client = options.modelClient ?? await createModelClient();
     const reply = await withTimeout(
-      () => runAgenticLoop(task),
-      TASK_TIMEOUT_MS,
+      signal => runAgenticLoop(task, client, signal),
+      options.timeoutMs ?? TASK_TIMEOUT_MS,
       task.id
     );
 
@@ -244,7 +311,7 @@ export async function processNextTask(): Promise<void> {
       durationMs: Date.now() - new Date(startedAt).getTime(),
     });
 
-    if (task.source === 'slack' && task.payload.channel && _postToSlack) {
+    if (task.payload.channel && _postToSlack) {
       // Thread continuations reply in the original thread (threadTs).
       // Top-level messages start a thread under the user's own message (slackTs).
       const replyThreadTs = task.payload.threadTs ?? task.payload.slackTs;
@@ -266,7 +333,7 @@ export async function processNextTask(): Promise<void> {
       durationMs: Date.now() - new Date(startedAt).getTime(),
     });
 
-    if (task.source === 'slack' && task.payload.channel && _postToSlack) {
+    if (task.payload.channel && _postToSlack) {
       const replyThreadTs = task.payload.threadTs ?? task.payload.slackTs;
       await _postToSlack(
         task.payload.channel,
@@ -285,7 +352,7 @@ export function startRunner(): void {
   console.log('[oski:runner] started. Polling every 5s.');
 
   intervalHandle = setInterval(async () => {
-    if (queueLength() === 0) return;
+    if (getProcessing() || queueLength() === 0) return;
     await processNextTask();
   }, 5_000);
 }

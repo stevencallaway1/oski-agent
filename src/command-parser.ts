@@ -40,7 +40,7 @@ export function parseOskiCommand(rawText: string): OskiCommand {
   if (lower === 'oski tools' || lower === 'oski: tools') return { type: 'tools' };
   if (lower === 'oski cost' || lower === 'oski: cost') return { type: 'cost' };
 
-  // A bare @mention with no text (e.g. "@Oski") — treat as help.
+  // A bare @mention with no text (e.g. "@Oski") - treat as help.
   if (/^<@[A-Z0-9]+>$/i.test(rawText.trim())) return { type: 'help' };
 
   return null;
