@@ -6,7 +6,7 @@ export const POLICY = {
   // Halt and alert when daily spend crosses this threshold.
   dailyCapUsd: parseFloat(process.env.OSKI_DAILY_USD_CAP ?? '2'),
 
-  // Default model for routing/triage turns. Configurable — no hardcoded assumptions.
+  // Default model for routing/triage turns. Configurable - no hardcoded assumptions.
   defaultModel: process.env.ANTHROPIC_MODEL_DEFAULT ?? 'claude-haiku-4-5',
 
   // Elevated model for reasoning-heavy tasks. Runner promotes when needed.
@@ -41,7 +41,7 @@ export function isCodegenEnabled(): boolean {
 }
 
 // Directories the agent may read and search. Read at call time so tests can
-// override. EMPTY MEANS NO ACCESS — there is deliberately no default root.
+// override. EMPTY MEANS NO ACCESS - there is deliberately no default root.
 export function getWorkspaceRoots(): string[] {
   return (process.env.OSKI_WORKSPACE_ROOTS ?? '')
     .split(',')

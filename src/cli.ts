@@ -8,6 +8,7 @@ import readline from 'readline';
 import { enqueue } from './queue';
 import { initRegistry } from './tool-registry';
 import { processNextTask } from './runner';
+import { getLastTask } from './state';
 
 async function main(): Promise<void> {
   initRegistry();
@@ -29,6 +30,14 @@ async function main(): Promise<void> {
   console.log(`[oski:cli] Enqueuing task: ${text.slice(0, 80)}`);
   enqueue(text, 'manual');
   await processNextTask();
+  const completed = getLastTask();
+  if (!completed) {
+    console.error('[oski:cli] No task result was recorded.');
+    process.exitCode = 1;
+    return;
+  }
+  console.log(`\n[oski:cli] Agent response:\n${completed.reply}`);
+  if (!completed.success) process.exitCode = 1;
 }
 
 main().catch(err => {

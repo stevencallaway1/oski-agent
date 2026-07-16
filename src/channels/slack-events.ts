@@ -10,10 +10,30 @@ function getSigningSecret(): string {
   return process.env.OSKI_SLACK_SIGNING_SECRET ?? '';
 }
 
+export function validateSlackSignature(input: {
+  secret: string;
+  timestamp: string;
+  signature: string;
+  rawBody: string;
+  nowMs?: number;
+}): boolean {
+  const timestampNumber = Number.parseInt(input.timestamp, 10);
+  if (!input.secret || !Number.isFinite(timestampNumber)) return false;
+  if (Math.abs((input.nowMs ?? Date.now()) / 1000 - timestampNumber) > 300) return false;
+
+  const computed = 'v0=' + crypto
+    .createHmac('sha256', input.secret)
+    .update(`v0:${input.timestamp}:${input.rawBody}`)
+    .digest('hex');
+  const expected = Buffer.from(computed);
+  const supplied = Buffer.from(input.signature);
+  return expected.length === supplied.length && crypto.timingSafeEqual(expected, supplied);
+}
+
 function verifySlackSignature(req: Request): boolean {
   const secret = getSigningSecret();
   if (!secret) {
-    console.warn('[oski:slack] OSKI_SLACK_SIGNING_SECRET not set — skipping signature check (dev mode only)');
+    console.warn('[oski:slack] OSKI_SLACK_SIGNING_SECRET not set - skipping signature check (dev mode only)');
     return true;
   }
 
@@ -21,18 +41,8 @@ function verifySlackSignature(req: Request): boolean {
   const sig = req.headers['x-slack-signature'];
   if (!ts || !sig || typeof ts !== 'string' || typeof sig !== 'string') return false;
 
-  // Reject requests older than 5 minutes.
-  if (Math.abs(Date.now() / 1000 - parseInt(ts, 10)) > 300) return false;
-
   const rawBody = (req as Request & { rawBody?: Buffer }).rawBody?.toString('utf8') ?? JSON.stringify(req.body);
-  const baseString = `v0:${ts}:${rawBody}`;
-  const computed = 'v0=' + crypto.createHmac('sha256', secret).update(baseString).digest('hex');
-
-  try {
-    return crypto.timingSafeEqual(Buffer.from(computed), Buffer.from(sig));
-  } catch {
-    return false;
-  }
+  return validateSlackSignature({ secret, timestamp: ts, signature: sig, rawBody });
 }
 
 export function createSlackEventsRouter(): Router {
@@ -77,7 +87,7 @@ export function createSlackEventsRouter(): Router {
     const slackTs = String(event.ts ?? '');
     const threadTs = event.thread_ts ? String(event.thread_ts) : undefined;
 
-    // Respond immediately — Slack requires <3s.
+    // Respond immediately - Slack requires <3s.
     res.sendStatus(200);
 
     // Only process messages that mention oski or are in the designated channel.

@@ -34,6 +34,7 @@ flowchart TD
 
     RUNNER --> COSTLOG[(data/agent/cost.jsonl)]
     RUNNER --> QLOG[(data/agent/queue.jsonl)]
+    RUNNER --> APPROVALS[(data/agent/approvals.jsonl)]
     RUNNER --> INSTR[(instructions.md)]
     RUNNER --> REPLY[Reply: Slack post or CLI stdout]
 ```
@@ -44,14 +45,16 @@ Everything is a single Node.js process. There is no separate worker fleet, messa
 
 **Queue (`src/queue.ts`).** An in-memory array (`AgentTask[]`) with an append-only JSONL mirror at `data/agent/queue.jsonl` for audit purposes. `enqueue()` pushes, `dequeue()` shifts (FIFO). The JSONL log is a write-only audit trail, not a source of truth for replay. If the process restarts, in-memory queue state is lost, and only the log record of what was enqueued survives.
 
-**Runner (`src/runner.ts`).** A `setInterval` polls every 5 seconds. If the queue is non-empty it calls `processNextTask()`, which dequeues exactly one task. Concurrency is fixed at 1. There is no parallel task execution. Each task runs `runAgenticLoop()`:
+**Runner (`src/runner.ts`).** A `setInterval` polls every 5 seconds. Both the poller and `processNextTask()` check the shared processing flag before dequeueing, so only one task can run at a time. Each task runs `runAgenticLoop()`:
 
 - Before starting, the runner checks `todaySpendUsd() >= POLICY.dailyCapUsd` and refuses to run if the cap is already hit.
 - If the task originated from a Slack thread, the runner fetches up to 20 prior messages via `conversations.replies` for context continuity.
 - The model call loop runs for up to 10 steps. Each step is a `client.messages.create()` call with the full tool list attached.
-- `withRetry()` retries on rate-limit/overload/connection errors, up to 3 attempts, 30s wait on rate limits, exponential backoff otherwise. `withTimeout()` enforces a hard 120 second ceiling on the entire task via `Promise.race`.
+- `withRetry()` retries on rate-limit, overload, and connection errors, up to 3 attempts, with a 30-second wait on rate limits and exponential backoff otherwise. A 120-second timeout aborts the active model request and prevents further model steps; it does not forcibly terminate a tool that is already running.
 - **Model escalation.** Every task starts on `POLICY.defaultModel`, a cheap and fast model. Once the loop reaches step 2 with at least one tool call made, the runner switches to `POLICY.reasoningModel` for the remaining steps. This is a simple step-count heuristic, not a classifier. It exists to keep single-tool-call tasks cheap while giving multi-step tasks a stronger model.
 - Every tool call and its result are logged via `log.toolCall()`. When the loop ends, `logCost()` writes one JSONL line with model, token counts, estimated USD, and the list of tool names called.
+
+Any task carrying a Slack channel, including cron and HTTP Events API tasks, posts its result through the registered Slack poster. When `slack_post_draft` returns a draft during a Slack task, the runner stores it under the originating channel and thread. A human can reply `approve` or `send it` in that same thread. Oski posts the saved draft, then appends the user, task, source thread, and target to `data/agent/approvals.jsonl`. Bot messages are ignored before approval handling, and a reply in any other thread cannot access the pending draft.
 
 ## Tool registry
 
@@ -74,7 +77,7 @@ This "thin core, tools self-enforce" design keeps the registry and runner simple
 
 ## Cost control
 
-`src/cost-log.ts` maintains a small hardcoded pricing table (`PRICING`), keyed by model name prefix, for input/output cost per million tokens. Unknown models fall back to the most expensive known tier (currently the Opus row), so a misconfigured or newly released model name errs toward pausing the queue early rather than silently overspending.
+`src/cost-log.ts` maintains a small hardcoded pricing table (`PRICING`), keyed by model name prefix, for input/output cost per million tokens. Claude Haiku 4.5 uses the standard $1 input and $5 output rates per million tokens. Unknown models fall back to the most expensive known tier (currently the Opus row), so a misconfigured or newly released model name errs toward pausing the queue early rather than silently overspending. If a task escalates, the current implementation attributes all accumulated tokens to the final model, which can overestimate the task cost.
 
 `todaySpendUsd()` and `weekSpendUsd()` read and sum `data/agent/cost.jsonl` on demand. There is no in-memory running total, so the log file is the actual source of truth for spend. The runner checks the daily cap **before** starting a task. It does not interrupt a task already in progress if the cap is crossed mid-task.
 
@@ -86,8 +89,8 @@ This "thin core, tools self-enforce" design keeps the registry and runner simple
 
 Two independent transports, chosen by which environment variables are set:
 
-- **Socket Mode (`src/channels/socket-mode.ts`)**, preferred. A persistent WebSocket via `@slack/socket-mode`, so no public URL or inbound webhook is needed. Handles `message` and `app_mention` events, resolves the configured channel name/ID once at connect time, and parses commands via `parseOskiCommand()`. Immediate commands (`status`, `help`, `tools`, `cost`) bypass the queue entirely and reply synchronously. Everything else is enqueued.
-- **HTTP Events API (`src/channels/slack-events.ts`)**, fallback for stateless hosting. Verifies every request with HMAC-SHA256 over `v0:{timestamp}:{raw_body}` using `OSKI_SLACK_SIGNING_SECRET`, compared with `crypto.timingSafeEqual`, and rejects requests more than 5 minutes old for replay protection. If no signing secret is set, signature verification is skipped with a console warning, intended for local development only.
+- **Socket Mode (`src/channels/socket-mode.ts`)**, preferred. A persistent WebSocket via `@slack/socket-mode`, so no public URL or inbound webhook is needed. Handles `message` and `app_mention` events, resolves and enforces the configured channel, and parses commands via `parseOskiCommand()`. Immediate commands (`status`, `help`, `tools`, `cost`) bypass the queue entirely and reply synchronously. Exact `approve` and `send it` replies are handled only inside a thread holding a pending draft.
+- **HTTP Events API (`src/channels/slack-events.ts`)**, fallback for stateless hosting. Verifies every request with HMAC-SHA256 over `v0:{timestamp}:{raw_body}` using `OSKI_SLACK_SIGNING_SECRET`, compared with `crypto.timingSafeEqual`, and rejects requests more than 5 minutes old for replay protection. When `OSKI_SLACK_BOT_TOKEN` is also configured, queued and scheduled results can be delivered. Thread-scoped draft approval is currently a Socket Mode feature.
 
 ## Optional codegen (self-evolution)
 
@@ -117,7 +120,7 @@ This repo is a reference architecture, not a hardened production system as shipp
 
 - **Durable, replayable task queue.** Today the queue is an in-memory array. A process crash mid-task loses that task (only the enqueue log record survives). A production deployment would want a persistent queue (Redis, SQS, or a Postgres-backed job table) with replay-on-restart semantics.
 - **Horizontal scale.** Concurrency is fixed at 1 by design for predictable cost and behavior. Scaling beyond one team's task volume would require a real work-distribution model, not just raising a constant.
-- **Test coverage.** CI runs `npm run build` on every push and pull request, but there is no automated test suite yet exercising the queue, runner, or tools.
+- **Test coverage.** CI runs the focused regression suite, but production use would need broader integration, load, and adversarial testing.
 - **Sandboxed execution for generated code.** `generate_tool` runs directly on the host process today. A production deployment enabling codegen would want to run that generation, and ideally a generated tool's first few invocations, in an isolated environment.
 - **Secrets management.** Configuration is plain `.env` today. Production use would want a secrets manager (Vault, AWS Secrets Manager, etc.) instead of files on disk.
 - **Structured observability.** Logs are console output plus JSONL files. Production use would want metrics, alerting, and log aggregation rather than `tail`-ing files.

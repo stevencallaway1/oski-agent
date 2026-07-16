@@ -21,7 +21,7 @@ const tool: ToolDefinition = {
         channel,
         text,
         thread_ts: thread_ts ?? null,
-        note: 'DRAFT: Not posted. Add "slack_post_draft" to OSKI_LIVE_TOOLS to enable live posting.',
+        note: 'DRAFT: Not posted. A human must approve it in the originating Slack thread or post it manually.',
       };
     }
 

@@ -18,10 +18,12 @@ Under the hood: the model calls `read_file` against `README.md` and `TODO.md`, b
 ```
 You:  oski: draft an internal update about this week's progress
 Oski: DRAFT (not posted): "This week: billing fix shipped, onboarding doc
-      in review, retro scheduled Fri. No blockers." Reply 'send it' to post live.
+      in review, retro scheduled Fri. No blockers." Reply 'send it' in Socket Mode to post live.
+You (same thread, Socket Mode): send it
+Oski: Posted the saved draft. Human approval logged for the task.
 ```
 
-Under the hood: the model calls `slack_post_draft`. Unless `slack_post_draft` is in `OSKI_LIVE_TOOLS`, the tool returns `{ mode: 'draft', ... }` and the system prompt requires the agent to paste the full draft text into its reply. The draft was never posted anywhere, so this is the only way you see it.
+Under the hood: the model calls `slack_post_draft`. Unless `slack_post_draft` is in `OSKI_LIVE_TOOLS`, the tool returns `{ mode: 'draft', ... }` and the system prompt requires the agent to paste the full draft text into its reply. In Socket Mode, the runner also saves that draft under the originating Slack thread. Only a human reply of `approve` or `send it` in that thread can post it. The approval is appended to `data/agent/approvals.jsonl` after the post succeeds. The HTTP Events API fallback does not currently handle thread approvals.
 
 ## Search docs for a decision
 
@@ -96,4 +98,4 @@ Drop it in `src/tools/builtin/`, restart, and confirm it loaded with `npm run ag
 OSKI_CRON_ENABLED=true
 ```
 
-With cron enabled, two example jobs in `src/channels/cron.ts` fire on weekdays (15:30 and 18:00 UTC): one summarizes anything updated in the workspace in the last 24 hours, the other flags anything that looks blocked or overdue. Both are enqueued exactly like a Slack-triggered task: same runner, same cost log, same draft-first defaults for anything that would otherwise post live. Edit the cron expressions and task text in that file to match your team's schedule.
+With cron enabled, two example jobs in `src/channels/cron.ts` fire on weekdays (15:30 and 18:00 UTC): one summarizes anything updated in the workspace in the last 24 hours, the other flags anything that looks blocked or overdue. Both are enqueued through the same runner and cost log. When `OSKI_SLACK_CHANNEL_ID` and `OSKI_SLACK_BOT_TOKEN` are configured, their final results are posted to that channel. Edit the cron expressions and task text in that file to match your team's schedule.
