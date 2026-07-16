@@ -13,9 +13,27 @@ function todayEditCount(): number {
   } catch { return 0; }
 }
 
+export function sanitizeInstructionInput(section: unknown, rule: unknown): { section: string; rule: string } {
+  const cleanSection = String(section)
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/#/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80);
+  const cleanRule = String(rule)
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, POLICY.maxInstructionChars);
+
+  if (!cleanSection) throw new Error('Instruction section is empty after sanitization.');
+  if (!cleanRule) throw new Error('Instruction rule is empty after sanitization.');
+  return { section: cleanSection, rule: cleanRule };
+}
+
 const tool: ToolDefinition = {
   name: 'update_instructions',
-  description: 'Append a new behavioral rule to instructions.md under the specified section. Use when given explicit feedback or an "oski learn:" command. Rules are permanent — never removes existing rules.',
+  description: 'Append a new behavioral rule to instructions.md under the specified section. Use when given explicit feedback or an "oski learn:" command. Rules are permanent - never removes existing rules.',
   scope: 'live',
   inputSchema: {
     type: 'object',
@@ -26,20 +44,27 @@ const tool: ToolDefinition = {
     required: ['section', 'rule'],
   },
   async run({ section, rule }) {
-    const ruleStr = String(rule).slice(0, POLICY.maxInstructionChars);
+    let sanitized: { section: string; rule: string };
+    try {
+      sanitized = sanitizeInstructionInput(section, rule);
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) };
+    }
+    const { section: sectionStr, rule: ruleStr } = sanitized;
     if (todayEditCount() >= POLICY.dailyInstructionEditCap) {
       return { error: `Daily instruction edit cap (${POLICY.dailyInstructionEditCap}) reached. Try again tomorrow.` };
     }
 
     let content = fs.readFileSync(INSTRUCTIONS_PATH, 'utf8');
-    const sectionHeader = `## ${section}`;
+    const sectionHeader = `## ${sectionStr}`;
 
     if (content.includes(sectionHeader)) {
-      // Append after the section header's block.
-      content = content.replace(sectionHeader, `${sectionHeader}\n- ${ruleStr}`);
+      const headerIndex = content.indexOf(sectionHeader);
+      const insertAt = headerIndex + sectionHeader.length;
+      content = content.slice(0, insertAt) + `\n- ${ruleStr}` + content.slice(insertAt);
     } else {
       // Create a new section before the last "---" separator or at end of file.
-      const insertion = `\n## ${section}\n\n- ${ruleStr}\n`;
+      const insertion = `\n## ${sectionStr}\n\n- ${ruleStr}\n`;
       const lastSep = content.lastIndexOf('\n---');
       if (lastSep !== -1) {
         content = content.slice(0, lastSep) + insertion + content.slice(lastSep);
@@ -50,12 +75,12 @@ const tool: ToolDefinition = {
 
     fs.writeFileSync(INSTRUCTIONS_PATH, content, 'utf8');
 
-    const logEntry = { ts: new Date().toISOString(), section, rule: ruleStr };
+    const logEntry = { ts: new Date().toISOString(), section: sectionStr, rule: ruleStr };
     fs.appendFileSync(EDIT_LOG, JSON.stringify(logEntry) + '\n', 'utf8');
 
     return {
       ok: true,
-      section,
+      section: sectionStr,
       rule: ruleStr,
       note: 'Rule appended to instructions.md. Oski will follow it from the next turn onward.',
     };

@@ -7,10 +7,10 @@ import type { ToolDefinition } from '../../tool-registry';
 import { POLICY, isCodegenEnabled } from '../../policy';
 import { COST_LOG } from '../../paths';
 
-// EXPERIMENTAL — OFF BY DEFAULT.
+// EXPERIMENTAL - OFF BY DEFAULT.
 // This tool lets the agent author new tools by shelling out to the Claude Code
 // CLI. It only runs when OSKI_ENABLE_CODEGEN=true. Generated tools load with
-// scope "read" and full process permissions — ALWAYS review generated code
+// scope "read" and full process permissions - ALWAYS review generated code
 // before trusting it, and never add a generated tool to OSKI_LIVE_TOOLS
 // without reading it first.
 
@@ -18,7 +18,7 @@ const execFileAsync = promisify(execFile);
 
 const GENERATED_DIR = path.join(__dirname, '..', 'generated');
 
-// Claude Code CLI binary — override with CLAUDE_CLI_PATH env var.
+// Claude Code CLI binary - override with CLAUDE_CLI_PATH env var.
 const CLAUDE_BIN = process.env.CLAUDE_CLI_PATH ?? 'claude';
 
 function todayGenerateCount(): number {
@@ -40,7 +40,7 @@ const TOOL_TEMPLATE = `import type { ToolDefinition } from '../../tool-registry'
 const tool: ToolDefinition = {
   name: '{{name}}',
   description: '',   // fill in
-  scope: 'read',     // read | draft | live — start conservative
+  scope: 'read',     // read | draft | live - start conservative
   inputSchema: {
     type: 'object',
     properties: {},

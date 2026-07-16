@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="0%" r="80%">
+      <stop offset="0" stop-color="#f59e0b" stop-opacity=".18"/>
+      <stop offset=".72" stop-color="#050505" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M44 0H0v44" fill="none" stroke="#fff" stroke-opacity=".045"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="#050505"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <circle cx="102" cy="92" r="10" fill="#fbbf24"/>
+  <text x="130" y="105" fill="#fff" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="34" font-weight="700">oski-agent</text>
+  <text x="86" y="278" fill="#fff" font-family="Inter, Arial, sans-serif" font-size="70" font-weight="700">The self-evolving</text>
+  <text x="86" y="365" fill="#fff" font-family="Inter, Arial, sans-serif" font-size="70" font-weight="700">AI ops agent.</text>
+  <text x="88" y="438" fill="#a3a3a3" font-family="Inter, Arial, sans-serif" font-size="28">Draft-first execution. Explicit memory. Human-gated growth.</text>
+  <rect x="86" y="510" width="294" height="54" rx="10" fill="#fbbf24"/>
+  <text x="111" y="546" fill="#050505" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="21" font-weight="700">OPEN-SOURCE REFERENCE</text>
+  <text x="1114" y="548" text-anchor="end" fill="#737373" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="20">ChiefOS</text>
+</svg>

@@ -5,7 +5,7 @@ import { getWorkspaceRoots } from '../../policy';
 
 const execFileAsync = promisify(execFile);
 
-// Uses ripgrep via execFile with an argument array — no shell, no string
+// Uses ripgrep via execFile with an argument array - no shell, no string
 // interpolation, so query and glob inputs cannot inject commands.
 // Search scope is limited to OSKI_WORKSPACE_ROOTS, same as read_file.
 
@@ -57,7 +57,7 @@ const tool: ToolDefinition = {
 
       return { count: results.length, results };
     } catch (err) {
-      // rg exits 1 when no matches — that's not an error.
+      // rg exits 1 when no matches - that's not an error.
       const code = (err as { code?: number }).code;
       if (code === 1) return { count: 0, results: [] };
       if ((err as { code?: string }).code === 'ENOENT') {

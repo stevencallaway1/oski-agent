@@ -112,7 +112,7 @@ You should see:
 
 ```
 [oski:slack] Socket Mode connected to Slack
-[oski] online: 5 tools loaded. All actions are draft-only.
+[oski] online - 5 tools loaded. All actions are draft-only.
 ```
 
 In the agent channel, type:
@@ -122,6 +122,8 @@ oski help
 ```
 
 If Oski replies with its command list, you're done.
+
+To verify human approval, ask Oski to draft a Slack update. Reply `approve` or `send it` inside the thread containing the draft. Oski posts the saved draft and records the human approval in `data/agent/approvals.jsonl`. Approval text outside that thread, or from a bot event, is rejected.
 
 ---
 

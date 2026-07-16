@@ -14,7 +14,7 @@ export interface CostEntry {
 // Pricing per million tokens (input / output), keyed by model prefix.
 // Edit this table to match current Anthropic pricing for the models you use.
 const PRICING: Record<string, { input: number; output: number }> = {
-  'claude-haiku-4-5': { input: 0.8, output: 4.0 },
+  'claude-haiku-4-5': { input: 1.0, output: 5.0 },
   'claude-sonnet-4-5': { input: 3.0, output: 15.0 },
   'claude-opus': { input: 15.0, output: 75.0 },
 };

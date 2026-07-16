@@ -1,6 +1,6 @@
 import type { ToolDefinition } from '../../tool-registry';
 
-// EXAMPLE PLUGIN — not loaded by default. See examples/plugins/README.md.
+// EXAMPLE PLUGIN - not loaded by default. See examples/plugins/README.md.
 //
 // Runs read-only SELECT queries against a Postgres database.
 //

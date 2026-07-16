@@ -9,6 +9,7 @@ import { listTools } from '../tool-registry';
 import { todaySpendUsd, weekSpendUsd } from '../cost-log';
 import { getLastTask, getRecentFailures, getPolicyViolationCount, getProcessing } from '../state';
 import { POLICY } from '../policy';
+import { approvePendingDraft } from '../approvals';
 
 // Read at call-time (inside startSocketMode) so dotenv has already run.
 function getAppToken(): string { return process.env.OSKI_SLACK_APP_TOKEN ?? ''; }
@@ -18,7 +19,7 @@ function getOskiChannel(): string { return (process.env.OSKI_SLACK_CHANNEL_ID ??
 // The web client is used for all Slack API calls (post messages, reactions, etc.)
 let webClient: WebClient | null = null;
 
-// Resolved channel ID — set at connect time. OSKI_SLACK_CHANNEL_ID may be a name
+// Resolved channel ID - set at connect time. OSKI_SLACK_CHANNEL_ID may be a name
 // (e.g. "oski" or "#oski") or an ID (e.g. "C0123456789"). Slack's postMessage accepts
 // names but event.channel is always an ID, so we resolve once and compare against this.
 let resolvedChannelId = '';
@@ -30,7 +31,7 @@ async function resolveChannelId(configured: string): Promise<string> {
     console.log(`[oski:slack] channel ID confirmed: ${configured}`);
     return configured;
   }
-  // It's a name — look it up.
+  // It's a name - look it up.
   const name = configured.replace(/^#/, '');
   try {
     const result = await webClient?.conversations.list({ types: 'public_channel,private_channel', limit: 200 });
@@ -39,7 +40,7 @@ async function resolveChannelId(configured: string): Promise<string> {
       console.log(`[oski:slack] resolved channel name "${configured}" → ID "${ch.id}"`);
       return ch.id;
     }
-    console.warn(`[oski:slack] could not resolve channel name "${configured}" — no matching channel found`);
+    console.warn(`[oski:slack] could not resolve channel name "${configured}" - no matching channel found`);
   } catch (err) {
     console.warn('[oski:slack] channel resolution failed:', err instanceof Error ? err.message : String(err));
   }
@@ -52,15 +53,17 @@ export function getWebClient(): WebClient | null {
 
 async function postToChannel(channel: string, text: string, threadTs?: string): Promise<void> {
   if (!webClient) return;
-  log.slackPost(channel, 'live');
+  const destination = resolvedChannelId && channel === getOskiChannel() ? resolvedChannelId : channel;
+  log.slackPost(destination, 'live');
   try {
     await webClient.chat.postMessage({
-      channel,
+      channel: destination,
       text,
       ...(threadTs ? { thread_ts: threadTs } : {}),
     });
   } catch (err) {
     console.error('[oski:slack] failed to post message:', err instanceof Error ? err.message : err);
+    throw err;
   }
 }
 
@@ -110,7 +113,7 @@ async function handleToolsCommand(channel: string, threadTs?: string): Promise<v
 
   const lines = [`*Loaded tools (${tools.length}):*`];
   for (const t of tools) {
-    lines.push(`• \`${t.name}\` [${t.scope}] — ${t.description.slice(0, 60)}`);
+    lines.push(`• \`${t.name}\` [${t.scope}] - ${t.description.slice(0, 60)}`);
   }
   await postToChannel(channel, lines.join('\n'), threadTs);
 }
@@ -123,7 +126,7 @@ async function handleCostCommand(channel: string, threadTs?: string): Promise<vo
 
   const lines = [
     `*Oski Cost Report*`,
-    `Today: $${today.toFixed(4)} / $${cap} cap${paused ? ' *[CAP HIT — PAUSED]*' : ''}`,
+    `Today: $${today.toFixed(4)} / $${cap} cap${paused ? ' *[CAP HIT - PAUSED]*' : ''}`,
     `This week: $${week.toFixed(4)}`,
     `Default model: ${POLICY.defaultModel}`,
     `Reasoning model: ${POLICY.reasoningModel}`,
@@ -135,16 +138,16 @@ async function handleCostCommand(channel: string, threadTs?: string): Promise<vo
 async function handleHelpCommand(channel: string, threadTs?: string): Promise<void> {
   const tools = listTools();
   const text = [
-    `*Oski — Internal Ops Agent*`,
+    `*Oski - Internal Ops Agent*`,
     `I handle internal team operations: status checks, research over approved files, drafting internal updates and replies. All actions are draft-only unless explicitly trusted.`,
     ``,
     `*Commands:*`,
-    `• \`oski: <task>\` — run any ops task`,
-    `• \`oski learn: <rule>\` — teach me a new behavioral rule`,
-    `• \`oski status\` — health check (queue, spend, last task)`,
-    `• \`oski tools\` — list all ${tools.length} loaded tools`,
-    `• \`oski cost\` — cost breakdown`,
-    `• \`oski help\` — this message`,
+    `• \`oski: <task>\` - run any ops task`,
+    `• \`oski learn: <rule>\` - teach me a new behavioral rule`,
+    `• \`oski status\` - health check (queue, spend, last task)`,
+    `• \`oski tools\` - list all ${tools.length} loaded tools`,
+    `• \`oski cost\` - cost breakdown`,
+    `• \`oski help\` - this message`,
     ``,
     `*Example tasks:*`,
     `• \`oski: summarize the open items in TODO.md\``,
@@ -160,7 +163,7 @@ async function handleHelpCommand(channel: string, threadTs?: string): Promise<vo
 
 function logOnline(): void {
   const tools = listTools();
-  console.log(`[oski] online — ${tools.length} tools loaded. All actions are draft-only.`);
+  console.log(`[oski] online - ${tools.length} tools loaded. All actions are draft-only.`);
 }
 
 export async function startSocketMode(): Promise<SocketModeClient | null> {
@@ -168,11 +171,11 @@ export async function startSocketMode(): Promise<SocketModeClient | null> {
   const botToken = getBotToken();
 
   if (!appToken) {
-    console.warn('[oski:slack] OSKI_SLACK_APP_TOKEN not set — Socket Mode disabled. Set it to enable Slack integration.');
+    console.warn('[oski:slack] OSKI_SLACK_APP_TOKEN not set - Socket Mode disabled. Set it to enable Slack integration.');
     return null;
   }
   if (!botToken) {
-    console.warn('[oski:slack] OSKI_SLACK_BOT_TOKEN not set — Socket Mode disabled.');
+    console.warn('[oski:slack] OSKI_SLACK_BOT_TOKEN not set - Socket Mode disabled.');
     return null;
   }
 
@@ -192,7 +195,7 @@ export async function startSocketMode(): Promise<SocketModeClient | null> {
       console.log(`[oski:slack] listening for plain messages in channel: "${resolvedChannelId}"`);
       return webClient?.conversations.history({ channel: resolvedChannelId, limit: 1 });
     }).then(() => {
-      console.log('[oski:slack] channels:history scope confirmed — thread memory will work');
+      console.log('[oski:slack] channels:history scope confirmed - thread memory will work');
     }).catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn('[oski:slack] scope or channel check failed:', msg);
@@ -228,10 +231,28 @@ export async function startSocketMode(): Promise<SocketModeClient | null> {
     const threadTs = event.thread_ts ? String(event.thread_ts) : undefined;
 
     if (!rawText || !channel) return;
+    if (resolvedChannelId && channel !== resolvedChannelId) return;
+
+    const normalizedText = rawText.toLowerCase();
+    if (normalizedText === 'send it' || normalizedText === 'approve') {
+      const approval = await approvePendingDraft({
+        channel,
+        threadTs,
+        userId: user,
+        isBot: Boolean(event.bot_id),
+      }, postToChannel);
+      await postToChannel(
+        channel,
+        approval.approved
+          ? `Posted the saved draft. Human approval logged for task \`${approval.taskId?.slice(0, 8)}\`.`
+          : approval.reason ?? 'No pending draft was approved.',
+        threadTs ?? slackTs
+      );
+      return;
+    }
 
     // Parse the command. The bot only receives message events from channels it is
-    // a member of. If it is only invited to its designated channel, every event that
-    // reaches here is from that channel — no channel ID comparison needed.
+    // a member of, and the configured channel is enforced above when present.
     let command = parseOskiCommand(rawText);
     if (!command) {
       command = { type: 'task', text: rawText.trim() };
@@ -243,7 +264,7 @@ export async function startSocketMode(): Promise<SocketModeClient | null> {
     // Thread to use for ack/reply: existing thread if replying, or start one under the user's message.
     const replyThread = threadTs ?? slackTs;
 
-    // Immediate-response commands — don't go through the queue.
+    // Immediate-response commands - don't go through the queue.
     if (command.type === 'status') {
       await handleStatusCommand(channel, replyThread);
       return;
@@ -289,6 +310,7 @@ export async function startSocketMode(): Promise<SocketModeClient | null> {
     const slackTs = String(event.ts ?? '');
     const threadTs = event.thread_ts ? String(event.thread_ts) : undefined;
     const replyThread = threadTs ?? slackTs;
+    if (resolvedChannelId && channel !== resolvedChannelId) return;
 
     const command = parseOskiCommand(rawText);
     if (!command) return;
