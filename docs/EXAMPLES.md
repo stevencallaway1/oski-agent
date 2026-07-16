@@ -18,12 +18,12 @@ Under the hood: the model calls `read_file` against `README.md` and `TODO.md`, b
 ```
 You:  oski: draft an internal update about this week's progress
 Oski: DRAFT (not posted): "This week: billing fix shipped, onboarding doc
-      in review, retro scheduled Fri. No blockers." Reply 'send it' to post live.
-You (same thread): send it
+      in review, retro scheduled Fri. No blockers." Reply 'send it' in Socket Mode to post live.
+You (same thread, Socket Mode): send it
 Oski: Posted the saved draft. Human approval logged for the task.
 ```
 
-Under the hood: the model calls `slack_post_draft`. Unless `slack_post_draft` is in `OSKI_LIVE_TOOLS`, the tool returns `{ mode: 'draft', ... }` and the system prompt requires the agent to paste the full draft text into its reply. In Socket Mode, the runner also saves that draft under the originating Slack thread. Only a human reply of `approve` or `send it` in that thread can post it. The approval is appended to `data/agent/approvals.jsonl` after the post succeeds.
+Under the hood: the model calls `slack_post_draft`. Unless `slack_post_draft` is in `OSKI_LIVE_TOOLS`, the tool returns `{ mode: 'draft', ... }` and the system prompt requires the agent to paste the full draft text into its reply. In Socket Mode, the runner also saves that draft under the originating Slack thread. Only a human reply of `approve` or `send it` in that thread can post it. The approval is appended to `data/agent/approvals.jsonl` after the post succeeds. The HTTP Events API fallback does not currently handle thread approvals.
 
 ## Search docs for a decision
 

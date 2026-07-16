@@ -123,7 +123,7 @@ oski help
 
 If Oski replies with its command list, you're done.
 
-To verify human approval, ask Oski to draft a Slack update. Reply `approve` or `send it` inside the thread containing the draft. Oski posts the saved draft and records the human approval in `data/agent/approvals.jsonl`. Approval text outside that thread, or from a bot event, is rejected.
+To verify human approval in Socket Mode, ask Oski to draft a Slack update. Reply `approve` or `send it` inside the thread containing the draft. Oski posts the saved draft and records the human approval in `data/agent/approvals.jsonl`. Approval text outside that thread, or from a bot event, is rejected. The HTTP Events API fallback currently supports inbound tasks and result delivery, but not thread approvals.
 
 ---
 

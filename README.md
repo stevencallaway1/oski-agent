@@ -83,7 +83,7 @@ flowchart LR
 ```
 
 - **Queue.** In-memory FIFO with an append-only JSONL mirror at `data/agent/queue.jsonl`. Concurrency is 1. One task at a time keeps cost and behavior predictable.
-- **Runner.** Each task is an agentic loop. The model can call tools for up to 10 steps before producing a final reply. A cheap model handles routing. The runner escalates to a stronger model once a task proves it needs multiple tool calls. Retries use backoff on rate limits. A 120-second timeout aborts further model calls.
+- **Runner.** Each task is an agentic loop. The model can call tools for up to 10 steps before producing a final reply. A cheap model handles routing. The runner escalates to a stronger model once a task proves it needs multiple tool calls. Retries use backoff on rate limits. A 120-second timeout aborts the active model request and prevents additional model steps; it does not forcibly terminate a tool that is already running.
 - **Tools.** Every tool is a TypeScript file exporting a typed `ToolDefinition` with a `read`, `draft`, or `live` scope. The registry discovers builtin tools at startup and hot-reloads `src/tools/generated/`.
 - **Cost log.** Every turn writes model, tokens, and estimated USD to `data/agent/cost.jsonl`. The queue checks the daily cap before starting each task.
 - **Instructions.** `instructions.md` loads fresh into the system prompt on every turn. The team extends it with `oski learn:` in Slack. No redeploy required.
@@ -121,8 +121,8 @@ Oski (in thread): 3 open items: ship the billing fix (owner: A), write the
 
 You:             oski: draft an internal update about this week's progress
 Oski (in thread): DRAFT (not posted): "This week: billing fix shipped, onboarding
-                  doc in review, retro scheduled Fri..." Reply 'send it' to post live.
-You (same thread): send it
+                  doc in review, retro scheduled Fri..." Reply 'send it' in Socket Mode to post live.
+You (same thread, Socket Mode): send it
 Oski:            Posted the saved draft. Human approval logged for task `3f2a91bc`.
 
 You:             oski learn: always mention owners by name in summaries
@@ -194,7 +194,7 @@ npm start
 
 ## Slack setup
 
-Full walkthrough in [docs/SLACK_SETUP.md](docs/SLACK_SETUP.md). Short version: create a Slack app, enable Socket Mode, add bot scopes, install to your workspace, invite the bot to one channel, and set three env vars (`OSKI_SLACK_APP_TOKEN`, `OSKI_SLACK_BOT_TOKEN`, `OSKI_SLACK_CHANNEL_ID`). Socket Mode means no public URL and no webhook configuration. Draft approval with `approve` or `send it` is supported in the originating Slack thread. Scheduled results post to `OSKI_SLACK_CHANNEL_ID` when the bot token is configured.
+Full walkthrough in [docs/SLACK_SETUP.md](docs/SLACK_SETUP.md). Short version: create a Slack app, enable Socket Mode, add bot scopes, install to your workspace, invite the bot to one channel, and set three env vars (`OSKI_SLACK_APP_TOKEN`, `OSKI_SLACK_BOT_TOKEN`, `OSKI_SLACK_CHANNEL_ID`). Socket Mode means no public URL and no webhook configuration. Draft approval with `approve` or `send it` is supported in the originating Slack thread when using Socket Mode. The HTTP Events API fallback does not currently handle thread approvals. Scheduled results post to `OSKI_SLACK_CHANNEL_ID` when the bot token is configured.
 
 ## Environment variables
 

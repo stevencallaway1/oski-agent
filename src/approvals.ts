@@ -51,20 +51,34 @@ export async function approvePendingDraft(
     return { approved: false, reason: 'No pending draft exists in this Slack thread.' };
   }
 
-  await post(draft.targetChannel, draft.text, draft.targetThreadTs);
+  // Consume before awaiting the network call. JavaScript execution is synchronous
+  // until the first await, so concurrent approvals cannot claim the same draft.
+  pendingDrafts.delete(key);
+
+  try {
+    await post(draft.targetChannel, draft.text, draft.targetThreadTs);
+  } catch (err) {
+    if (!pendingDrafts.has(key)) pendingDrafts.set(key, draft);
+    return { approved: false, reason: `Slack post failed: ${err instanceof Error ? err.message : String(err)}` };
+  }
 
   const approvedAt = new Date().toISOString();
-  fs.appendFileSync(options.logPath ?? APPROVAL_LOG, JSON.stringify({
-    event: 'slack_draft_approved',
-    approvedAt,
-    approvedBy: request.userId,
-    taskId: draft.taskId,
-    originChannel: draft.originChannel,
-    originThreadTs: draft.originThreadTs,
-    targetChannel: draft.targetChannel,
-    targetThreadTs: draft.targetThreadTs ?? null,
-  }) + '\n', 'utf8');
+  try {
+    fs.appendFileSync(options.logPath ?? APPROVAL_LOG, JSON.stringify({
+      event: 'slack_draft_approved',
+      approvedAt,
+      approvedBy: request.userId,
+      taskId: draft.taskId,
+      originChannel: draft.originChannel,
+      originThreadTs: draft.originThreadTs,
+      targetChannel: draft.targetChannel,
+      targetThreadTs: draft.targetThreadTs ?? null,
+    }) + '\n', 'utf8');
+  } catch (err) {
+    const reason = `Slack post succeeded, but approval audit logging failed: ${err instanceof Error ? err.message : String(err)}`;
+    console.error(`[oski:approval] ${reason}`);
+    return { approved: true, taskId: draft.taskId, reason };
+  }
 
-  pendingDrafts.delete(key);
   return { approved: true, taskId: draft.taskId };
 }

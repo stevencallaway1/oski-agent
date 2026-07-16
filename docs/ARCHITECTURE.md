@@ -50,7 +50,7 @@ Everything is a single Node.js process. There is no separate worker fleet, messa
 - Before starting, the runner checks `todaySpendUsd() >= POLICY.dailyCapUsd` and refuses to run if the cap is already hit.
 - If the task originated from a Slack thread, the runner fetches up to 20 prior messages via `conversations.replies` for context continuity.
 - The model call loop runs for up to 10 steps. Each step is a `client.messages.create()` call with the full tool list attached.
-- `withRetry()` retries on rate-limit, overload, and connection errors, up to 3 attempts, with a 30-second wait on rate limits and exponential backoff otherwise. A 120-second timeout aborts the active model request and prevents further model steps.
+- `withRetry()` retries on rate-limit, overload, and connection errors, up to 3 attempts, with a 30-second wait on rate limits and exponential backoff otherwise. A 120-second timeout aborts the active model request and prevents further model steps; it does not forcibly terminate a tool that is already running.
 - **Model escalation.** Every task starts on `POLICY.defaultModel`, a cheap and fast model. Once the loop reaches step 2 with at least one tool call made, the runner switches to `POLICY.reasoningModel` for the remaining steps. This is a simple step-count heuristic, not a classifier. It exists to keep single-tool-call tasks cheap while giving multi-step tasks a stronger model.
 - Every tool call and its result are logged via `log.toolCall()`. When the loop ends, `logCost()` writes one JSONL line with model, token counts, estimated USD, and the list of tool names called.
 

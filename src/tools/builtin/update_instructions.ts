@@ -31,6 +31,22 @@ export function sanitizeInstructionInput(section: unknown, rule: unknown): { sec
   return { section: cleanSection, rule: cleanRule };
 }
 
+export function insertInstructionRule(content: string, section: string, rule: string): string {
+  const sectionHeader = `## ${section}`;
+  const lines = content.split('\n');
+  const headingIndex = lines.findIndex(line => line === sectionHeader);
+  if (headingIndex !== -1) {
+    lines.splice(headingIndex + 1, 0, `- ${rule}`);
+    return lines.join('\n');
+  }
+
+  const insertion = [`## ${section}`, '', `- ${rule}`, ''];
+  const separatorIndex = lines.lastIndexOf('---');
+  if (separatorIndex !== -1) lines.splice(separatorIndex, 0, ...insertion);
+  else lines.push(...insertion);
+  return lines.join('\n');
+}
+
 const tool: ToolDefinition = {
   name: 'update_instructions',
   description: 'Append a new behavioral rule to instructions.md under the specified section. Use when given explicit feedback or an "oski learn:" command. Rules are permanent - never removes existing rules.',
@@ -55,23 +71,7 @@ const tool: ToolDefinition = {
       return { error: `Daily instruction edit cap (${POLICY.dailyInstructionEditCap}) reached. Try again tomorrow.` };
     }
 
-    let content = fs.readFileSync(INSTRUCTIONS_PATH, 'utf8');
-    const sectionHeader = `## ${sectionStr}`;
-
-    if (content.includes(sectionHeader)) {
-      const headerIndex = content.indexOf(sectionHeader);
-      const insertAt = headerIndex + sectionHeader.length;
-      content = content.slice(0, insertAt) + `\n- ${ruleStr}` + content.slice(insertAt);
-    } else {
-      // Create a new section before the last "---" separator or at end of file.
-      const insertion = `\n## ${sectionStr}\n\n- ${ruleStr}\n`;
-      const lastSep = content.lastIndexOf('\n---');
-      if (lastSep !== -1) {
-        content = content.slice(0, lastSep) + insertion + content.slice(lastSep);
-      } else {
-        content += insertion;
-      }
-    }
+    const content = insertInstructionRule(fs.readFileSync(INSTRUCTIONS_PATH, 'utf8'), sectionStr, ruleStr);
 
     fs.writeFileSync(INSTRUCTIONS_PATH, content, 'utf8');
 

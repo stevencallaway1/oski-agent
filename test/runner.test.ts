@@ -92,4 +92,15 @@ describe('runner promises', () => {
       originThreadTs: '100.001', targetChannel: 'C_TARGET', text: 'Saved by runner',
     });
   });
+
+  it('aborts a timed-out model request without retrying or starting another request', async () => {
+    let aborted = false;
+    const create = vi.fn((_input: unknown, options?: { signal?: AbortSignal }) => new Promise<never>((_resolve, reject) => {
+      options?.signal?.addEventListener('abort', () => { aborted = true; reject(new Error('aborted')); }, { once: true });
+    }));
+    enqueue('timeout me', 'manual');
+    await processNextTask({ timeoutMs: 10, modelClient: { messages: { create } } });
+    expect(aborted).toBe(true);
+    expect(create).toHaveBeenCalledTimes(1);
+  });
 });

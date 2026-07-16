@@ -5,7 +5,7 @@ import path from 'path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import readFileTool from '../src/tools/builtin/read_file';
 import slackDraftTool from '../src/tools/builtin/slack_post_draft';
-import { sanitizeInstructionInput } from '../src/tools/builtin/update_instructions';
+import { insertInstructionRule, sanitizeInstructionInput } from '../src/tools/builtin/update_instructions';
 import { validateSlackSignature } from '../src/channels/slack-events';
 
 afterEach(() => {
@@ -40,6 +40,13 @@ describe('file allowlisted roots', () => {
 });
 
 describe('instruction-update sanitization', () => {
+  it('matches only the complete requested heading line', () => {
+    const content = '# Instructions\n\n## Tone and Style\n\n- Existing\n';
+    const updated = insertInstructionRule(content, 'Tone', 'New rule');
+    expect(updated).toBe(content + '\n## Tone\n\n- New rule\n');
+    expect(updated).toContain('## Tone and Style\n\n- Existing');
+  });
+
   it('flattens markdown structure and preserves literal replacement tokens', () => {
     expect(sanitizeInstructionInput('Tone\n## Injected', "Keep $& and $' literal\n- not a new rule")).toEqual({
       section: 'Tone Injected',
