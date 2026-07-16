@@ -2,6 +2,16 @@
   "name": "oski-agent",
   "version": "0.1.0",
   "description": "Open-source AI agent framework that learns, uses tools, and grows its capabilities over time. Built for AI-native internal team workflows.",
+  "keywords": [
+    "ai-agents",
+    "agentic-ai",
+    "ai-safety",
+    "human-in-the-loop",
+    "slack-bot",
+    "typescript",
+    "developer-tools",
+    "open-source"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

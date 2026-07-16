@@ -1,0 +1,61 @@
+name: Bug report
+description: Report a reproducible problem in Oski
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Please remove secrets, tokens, production data, and private company information before submitting."
+  - type: input
+    id: operating-system
+    attributes:
+      label: Operating system
+    validations:
+      required: true
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+    validations:
+      required: true
+  - type: input
+    id: oski-version
+    attributes:
+      label: Oski version or commit
+    validations:
+      required: true
+  - type: input
+    id: slack-transport
+    attributes:
+      label: Slack transport, if relevant
+      placeholder: Socket Mode, HTTP Events API, or not applicable
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Remove secrets, tokens, paths, and private data.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed secrets and private company data.
+          required: true

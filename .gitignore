@@ -19,3 +19,11 @@ data/
 .DS_Store
 .idea/
 .vscode/
+
+# Local browser and test artifacts
+.playwright-cli/
+output/
+redesign-options/
+playwright-report/
+test-results/
+coverage/
